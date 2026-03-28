@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,6 +51,8 @@ type Model struct {
 	providers pages.ProvidersModel
 	settings  pages.SettingsModel
 
+	showImportPrompt bool
+
 	execSignal *ExecSignal
 	quitting   bool
 }
@@ -68,6 +71,18 @@ func NewModel(state *store.AppState) Model {
 
 func (m Model) Init() tea.Cmd {
 	return m.logo.Init()
+}
+
+func (m Model) shouldPromptImport() bool {
+	if _, err := os.Stat(config.CCswitchDB); os.IsNotExist(err) {
+		return false
+	}
+	profiles, _ := filepath.Glob(filepath.Join(config.CCCProfiles, "*.json"))
+	if len(profiles) > 0 {
+		return false
+	}
+	count := commands.CountCCSwitchProviders(config.CCswitchDB)
+	return count > 0
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -107,9 +122,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.logo.Done() {
 			m.page = PageHome
 			m.focusSidebar = true
+			if m.shouldPromptImport() {
+				m.showImportPrompt = true
+			}
 		}
 		return m, tea.Batch(cmds...)
 	}
+
+	// Import prompt handling
+	if m.showImportPrompt {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y", "enter":
+				m.showImportPrompt = false
+				imported, _, err := commands.RunImportAll(config.CCswitchDB, config.CCCProfiles)
+				if err != nil {
+					fb := animations.NewFeedback(err.Error(), animations.FeedbackError)
+					m.feedback = &fb
+					cmds = append(cmds, fb.Init())
+				} else {
+					fb := animations.NewFeedback(fmt.Sprintf("imported %d providers", imported), animations.FeedbackSuccess)
+					m.feedback = &fb
+					cmds = append(cmds, fb.Init())
+					m.providers.Refresh()
+				}
+				return m, tea.Batch(cmds...)
+			case "n", "N", "esc":
+				m.showImportPrompt = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	// Handle keyboard
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		if m.focusSidebar {
@@ -374,13 +419,20 @@ func (m Model) renderSidebar(height int) string {
 func (m Model) renderContent(width, height int) string {
 	var content string
 
-	switch m.page {
-	case PageHome:
-		content = m.renderHome()
-	case PageProviders:
-		content = m.providers.View()
-	case PageSettings:
-		content = m.settings.View()
+	if m.showImportPrompt {
+		count := commands.CountCCSwitchProviders(config.CCswitchDB)
+		content = styles.TitleStyle.Render("Welcome") + "\n\n"
+		content += fmt.Sprintf("检测到 cc-switch 配置（%d 个 provider）\n\n", count)
+		content += "是否导入？ " + styles.FooterKeyStyle.Render("Y") + styles.Dim.Render("/") + styles.FooterKeyStyle.Render("N")
+	} else {
+		switch m.page {
+		case PageHome:
+			content = m.renderHome()
+		case PageProviders:
+			content = m.providers.View()
+		case PageSettings:
+			content = m.settings.View()
+		}
 	}
 
 	contentStyle := styles.ContentStyle
