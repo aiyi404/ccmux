@@ -7,7 +7,7 @@ import (
 
 var importCmd = &cobra.Command{
 	Use:   "import [name]",
-	Short: "Import current settings.json as a profile (standalone only)",
+	Short: "Import current settings.json as a profile",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		state, err := getState()
