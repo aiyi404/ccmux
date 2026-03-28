@@ -23,6 +23,10 @@ func Execute() error {
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&flagStandalone, "standalone", false, "Force standalone mode")
 	rootCmd.PersistentFlags().BoolVar(&flagCCSwitch, "cc-switch", false, "Force cc-switch mode")
+
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return tuiCmd.RunE(cmd, args)
+	}
 }
 
 func getState() (*store.AppState, error) {
