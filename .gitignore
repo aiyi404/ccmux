@@ -1,0 +1,13 @@
+# Dev docs
+tasks/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

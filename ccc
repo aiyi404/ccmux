@@ -1,0 +1,595 @@
+#!/usr/bin/env bash
+# ccc — Claude Code Provider Multiplexer (ccmux)
+# Lightweight CLI for managing and switching Claude Code providers per-terminal.
+# https://github.com/farion1231/ccmux
+set -euo pipefail
+
+# ── Constants ────────────────────────────────────────────────────────────────
+VERSION="0.1.0"
+CC_SWITCH_DB="$HOME/.cc-switch/cc-switch.db"
+CC_SWITCH_SETTINGS="$HOME/.cc-switch/settings.json"
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+BACKUP_DIR="$HOME/.claude/backups"
+CCC_DIR="$HOME/.config/ccc"
+CCC_CONFIG="$CCC_DIR/config.json"
+CCC_PROFILES="$CCC_DIR/profiles"
+APP_TYPE="claude"
+
+# ── Colors ───────────────────────────────────────────────────────────────────
+if [[ -t 1 ]]; then
+  BOLD='\033[1m' DIM='\033[2m' GREEN='\033[32m' YELLOW='\033[33m'
+  CYAN='\033[36m' RED='\033[31m' RESET='\033[0m'
+else
+  BOLD='' DIM='' GREEN='' YELLOW='' CYAN='' RED='' RESET=''
+fi
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+die()  { printf "${RED}error:${RESET} %s\n" "$*" >&2; exit 1; }
+info() { printf "${CYAN}▸${RESET} %s\n" "$*"; }
+warn() { printf "${YELLOW}warning:${RESET} %s\n" "$*" >&2; }
+ok()   { printf "${GREEN}✓${RESET} %s\n" "$*"; }
+
+check_jq() {
+  command -v jq &>/dev/null || die "jq is required. Install: brew install jq (macOS) / apt install jq (Linux)"
+}
+
+check_sqlite() {
+  command -v sqlite3 &>/dev/null || die "sqlite3 is required for cc-switch mode."
+}
+
+# ── Mode Detection ───────────────────────────────────────────────────────────
+detect_mode() {
+  if [[ -n "${FLAG_MODE:-}" ]]; then
+    echo "$FLAG_MODE"
+  elif [[ -n "${CCC_MODE:-}" ]]; then
+    echo "$CCC_MODE"
+  elif [[ -f "$CCC_CONFIG" ]]; then
+    local m
+    m=$(jq -r '.mode // "auto"' "$CCC_CONFIG" 2>/dev/null)
+    if [[ "$m" != "auto" && -n "$m" ]]; then
+      echo "$m"; return
+    fi
+    # auto: fall through
+    if [[ -f "$CC_SWITCH_DB" ]]; then echo "ccswitch"; else echo "standalone"; fi
+  elif [[ -f "$CC_SWITCH_DB" ]]; then
+    echo "ccswitch"
+  else
+    echo "standalone"
+  fi
+}
+
+# ── Fuzzy Name Resolution ───────────────────────────────────────────────────
+# Populates RESOLVED_NAME with the matched name, or dies on ambiguity/miss.
+RESOLVED_NAME=""
+
+get_all_names() {
+  if [[ "$MODE" == "ccswitch" ]]; then
+    sqlite3 "$CC_SWITCH_DB" "SELECT name FROM providers WHERE app_type='$APP_TYPE' ORDER BY sort_index;"
+  else
+    if [[ -d "$CCC_PROFILES" ]]; then
+      for f in "$CCC_PROFILES"/*.json; do
+        [[ -f "$f" ]] || continue
+        jq -r '.name // empty' "$f" 2>/dev/null
+      done
+    fi
+  fi
+}
+
+resolve_name() {
+  local input="$1"
+  local input_lower
+  input_lower=$(printf '%s' "$input" | tr '[:upper:]' '[:lower:]')
+  local -a exact=() prefix=()
+  while IFS= read -r n; do
+    [[ -z "$n" ]] && continue
+    local n_lower
+    n_lower=$(printf '%s' "$n" | tr '[:upper:]' '[:lower:]')
+    # exact (case-insensitive)
+    if [[ "$n_lower" == "$input_lower" ]]; then
+      exact+=("$n")
+    # prefix (case-insensitive)
+    elif [[ "$n_lower" == "$input_lower"* ]]; then
+      prefix+=("$n")
+    fi
+  done < <(get_all_names)
+
+  if [[ ${#exact[@]} -eq 1 ]]; then
+    RESOLVED_NAME="${exact[0]}"; return
+  elif [[ ${#exact[@]} -gt 1 ]]; then
+    printf "${RED}error:${RESET} ambiguous name '%s', matches:\n" "$input" >&2
+    printf "  %s\n" "${exact[@]}" >&2; exit 1
+  fi
+
+  if [[ ${#prefix[@]} -eq 1 ]]; then
+    RESOLVED_NAME="${prefix[0]}"; return
+  elif [[ ${#prefix[@]} -gt 1 ]]; then
+    printf "${RED}error:${RESET} ambiguous prefix '%s', matches:\n" "$input" >&2
+    printf "  %s\n" "${prefix[@]}" >&2; exit 1
+  fi
+
+  die "no provider matching '$input'"
+}
+
+# ── cc-switch DB Helpers ─────────────────────────────────────────────────────
+ccsw_get_config() {
+  local name="$1"
+  sqlite3 "$CC_SWITCH_DB" \
+    "SELECT settings_config FROM providers WHERE app_type='$APP_TYPE' AND name='$name' LIMIT 1;"
+}
+
+ccsw_get_id() {
+  local name="$1"
+  sqlite3 "$CC_SWITCH_DB" \
+    "SELECT id FROM providers WHERE app_type='$APP_TYPE' AND name='$name' LIMIT 1;"
+}
+
+ccsw_get_current_name() {
+  sqlite3 "$CC_SWITCH_DB" \
+    "SELECT name FROM providers WHERE app_type='$APP_TYPE' AND is_current=1 LIMIT 1;"
+}
+
+# ── Standalone Helpers ───────────────────────────────────────────────────────
+sa_profile_path() {
+  echo "$CCC_PROFILES/$1.json"
+}
+
+sa_get_current_name() {
+  if [[ -f "$CCC_CONFIG" ]]; then
+    jq -r '.current // empty' "$CCC_CONFIG" 2>/dev/null
+  fi
+}
+
+sa_build_overlay() {
+  local file="$1"
+  jq '{env: .env, model: .model} | with_entries(select(.value != null))' "$file"
+}
+
+sa_ensure_dir() {
+  [[ -d "$CCC_PROFILES" ]] || mkdir -p "$CCC_PROFILES"
+}
+
+# ── Backup ───────────────────────────────────────────────────────────────────
+backup_settings() {
+  [[ -f "$CLAUDE_SETTINGS" ]] || return 0
+  mkdir -p "$BACKUP_DIR"
+  local ts
+  ts=$(date +%s)000
+  cp "$CLAUDE_SETTINGS" "$BACKUP_DIR/.claude.json.backup.$ts"
+}
+
+# ── Commands ─────────────────────────────────────────────────────────────────
+
+cmd_list() {
+  local current_name=""
+  if [[ "$MODE" == "ccswitch" ]]; then
+    current_name=$(ccsw_get_current_name)
+    printf "${BOLD}  %-18s %-36s %s${RESET}\n" "NAME" "BASE_URL" "MODEL"
+    sqlite3 -separator '|' "$CC_SWITCH_DB" \
+      "SELECT name,
+              json_extract(settings_config, '\$.env.ANTHROPIC_BASE_URL'),
+              json_extract(settings_config, '\$.env.ANTHROPIC_MODEL')
+       FROM providers WHERE app_type='$APP_TYPE' ORDER BY sort_index;" \
+    | while IFS='|' read -r name url model; do
+      local marker="  "
+      [[ "$name" == "$current_name" ]] && marker="${GREEN}→${RESET} "
+      # shorten url: strip protocol
+      local short_url="${url#http://}"
+      short_url="${short_url#https://}"
+      printf "$marker${BOLD}%-18s${RESET} ${DIM}%-36s${RESET} %s\n" "$name" "$short_url" "$model"
+    done
+  else
+    current_name=$(sa_get_current_name)
+    if [[ ! -d "$CCC_PROFILES" ]] || ! compgen -G "$CCC_PROFILES/*.json" &>/dev/null; then
+      info "No profiles found. Create one with: ccc add <name>"
+      return
+    fi
+    printf "${BOLD}  %-18s %-36s %s${RESET}\n" "NAME" "BASE_URL" "MODEL"
+    for f in "$CCC_PROFILES"/*.json; do
+      [[ -f "$f" ]] || continue
+      local name url model
+      name=$(jq -r '.name // empty' "$f")
+      url=$(jq -r '.env.ANTHROPIC_BASE_URL // ""' "$f")
+      model=$(jq -r '.env.ANTHROPIC_MODEL // ""' "$f")
+      [[ -z "$name" ]] && continue
+      local marker="  "
+      [[ "$name" == "$current_name" ]] && marker="${GREEN}→${RESET} "
+      local short_url="${url#http://}"
+      short_url="${short_url#https://}"
+      printf "$marker${BOLD}%-18s${RESET} ${DIM}%-36s${RESET} %s\n" "$name" "$short_url" "$model"
+    done
+  fi
+}
+
+cmd_current() {
+  if [[ "$MODE" == "ccswitch" ]]; then
+    local name url model
+    read -r name url model < <(sqlite3 -separator ' ' "$CC_SWITCH_DB" \
+      "SELECT name,
+              json_extract(settings_config, '\$.env.ANTHROPIC_BASE_URL'),
+              json_extract(settings_config, '\$.env.ANTHROPIC_MODEL')
+       FROM providers WHERE app_type='$APP_TYPE' AND is_current=1 LIMIT 1;")
+    if [[ -z "$name" ]]; then
+      warn "no active provider"; return 1
+    fi
+    printf "${GREEN}→${RESET} ${BOLD}%s${RESET}\n" "$name"
+    printf "  base_url: %s\n" "$url"
+    printf "  model:    %s\n" "$model"
+  else
+    local name
+    name=$(sa_get_current_name)
+    if [[ -z "$name" ]]; then
+      warn "no active profile. Use 'ccc switch <name>' to set one."; return 1
+    fi
+    local file
+    file=$(sa_profile_path "$name")
+    if [[ ! -f "$file" ]]; then
+      warn "profile '$name' recorded as current but file missing"; return 1
+    fi
+    local url model
+    url=$(jq -r '.env.ANTHROPIC_BASE_URL // ""' "$file")
+    model=$(jq -r '.env.ANTHROPIC_MODEL // ""' "$file")
+    printf "${GREEN}→${RESET} ${BOLD}%s${RESET}\n" "$name"
+    printf "  base_url: %s\n" "$url"
+    printf "  model:    %s\n" "$model"
+  fi
+}
+
+cmd_show() {
+  [[ ${#@} -lt 1 ]] && die "usage: ccc show <name>"
+  resolve_name "$1"
+  local name="$RESOLVED_NAME"
+
+  if [[ "$MODE" == "ccswitch" ]]; then
+    local config
+    config=$(ccsw_get_config "$name")
+    [[ -z "$config" ]] && die "provider '$name' not found"
+    printf "${BOLD}%s${RESET}\n" "$name"
+    # show env fields with token masked
+    echo "$config" | jq -r '.env // {} | to_entries[] | "  \(.key): \(.value)"' \
+      | sed -E 's/(ANTHROPIC_AUTH_TOKEN: ).{4}(.{4})/\1****\2/'
+    local model_alias
+    model_alias=$(echo "$config" | jq -r '.model // empty')
+    if [[ -n "$model_alias" ]]; then printf "  model_alias: %s\n" "$model_alias"; fi
+  else
+    local file
+    file=$(sa_profile_path "$name")
+    [[ -f "$file" ]] || die "profile '$name' not found"
+    printf "${BOLD}%s${RESET}\n" "$name"
+    local desc
+    desc=$(jq -r '.description // empty' "$file")
+    [[ -n "$desc" ]] && printf "  description: %s\n" "$desc"
+    jq -r '.env // {} | to_entries[] | "  \(.key): \(.value)"' "$file" \
+      | sed -E 's/(ANTHROPIC_AUTH_TOKEN: ).{4}(.{4})/\1****\2/'
+    local model_alias
+    model_alias=$(jq -r '.model // empty' "$file")
+    if [[ -n "$model_alias" ]]; then printf "  model_alias: %s\n" "$model_alias"; fi
+  fi
+}
+
+cmd_use() {
+  [[ ${#@} -lt 1 ]] && die "usage: ccc use <name> [-- claude-args...]"
+  resolve_name "$1"; shift
+  local name="$RESOLVED_NAME"
+
+  # Collect remaining args (skip -- separator if present)
+  local -a claude_args=()
+  for arg in "$@"; do
+    [[ "$arg" == "--" ]] && continue
+    claude_args+=("$arg")
+  done
+
+  local tmpfile
+  tmpfile=$(mktemp /tmp/ccc-XXXXXXXX)
+  mv "$tmpfile" "$tmpfile.json"
+  tmpfile="$tmpfile.json"
+  trap "rm -f '$tmpfile'" EXIT
+
+  if [[ "$MODE" == "ccswitch" ]]; then
+    local config
+    config=$(ccsw_get_config "$name")
+    [[ -z "$config" ]] && die "provider '$name' not found"
+    echo "$config" > "$tmpfile"
+  else
+    local file
+    file=$(sa_profile_path "$name")
+    [[ -f "$file" ]] || die "profile '$name' not found"
+    sa_build_overlay "$file" > "$tmpfile"
+  fi
+
+  info "launching claude with profile '${name}'"
+  if [[ ${#claude_args[@]} -eq 0 ]]; then
+    exec claude --settings "$tmpfile"
+  else
+    exec claude --settings "$tmpfile" "${claude_args[@]}"
+  fi
+}
+
+cmd_switch() {
+  [[ ${#@} -lt 1 ]] && die "usage: ccc switch <name>"
+  resolve_name "$1"
+  local name="$RESOLVED_NAME"
+
+  if [[ "$MODE" == "ccswitch" ]]; then
+    local config provider_id
+    config=$(ccsw_get_config "$name")
+    [[ -z "$config" ]] && die "provider '$name' not found"
+    provider_id=$(ccsw_get_id "$name")
+
+    # backup
+    backup_settings
+
+    # write settings.json
+    echo "$config" > "$CLAUDE_SETTINGS"
+
+    # update database is_current
+    sqlite3 "$CC_SWITCH_DB" \
+      "UPDATE providers SET is_current=0 WHERE app_type='$APP_TYPE';
+       UPDATE providers SET is_current=1 WHERE app_type='$APP_TYPE' AND id='$provider_id';"
+
+    # update cc-switch settings
+    if [[ -f "$CC_SWITCH_SETTINGS" ]]; then
+      local tmp
+      tmp=$(mktemp)
+      jq --arg id "$provider_id" '.currentProviderClaude = $id' "$CC_SWITCH_SETTINGS" > "$tmp" \
+        && mv "$tmp" "$CC_SWITCH_SETTINGS"
+    fi
+
+    ok "switched to '${name}'"
+  else
+    local file
+    file=$(sa_profile_path "$name")
+    [[ -f "$file" ]] || die "profile '$name' not found"
+
+    # backup
+    backup_settings
+
+    if [[ -f "$CLAUDE_SETTINGS" ]]; then
+      # merge env and model into existing settings.json
+      local overlay
+      overlay=$(sa_build_overlay "$file")
+      local tmp
+      tmp=$(mktemp)
+      jq --argjson overlay "$overlay" '
+        . as $base |
+        if $overlay.env then .env = ($base.env // {} | . * $overlay.env) else . end |
+        if $overlay.model then .model = $overlay.model else . end
+      ' "$CLAUDE_SETTINGS" > "$tmp" && mv "$tmp" "$CLAUDE_SETTINGS"
+    else
+      # no existing settings, create from overlay
+      mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
+      sa_build_overlay "$file" > "$CLAUDE_SETTINGS"
+    fi
+
+    # record current profile
+    mkdir -p "$CCC_DIR"
+    if [[ -f "$CCC_CONFIG" ]]; then
+      local tmp
+      tmp=$(mktemp)
+      jq --arg name "$name" '.current = $name' "$CCC_CONFIG" > "$tmp" && mv "$tmp" "$CCC_CONFIG"
+    else
+      printf '{"mode":"auto","current":"%s"}\n' "$name" > "$CCC_CONFIG"
+    fi
+
+    ok "switched to '${name}'"
+  fi
+}
+
+cmd_add() {
+  [[ "$MODE" != "standalone" ]] && die "'add' is only available in standalone mode. Manage providers in cc-switch GUI."
+  [[ ${#@} -lt 1 ]] && die "usage: ccc add <name>"
+  local name="$1"
+  sa_ensure_dir
+  local file
+  file=$(sa_profile_path "$name")
+  [[ -f "$file" ]] && die "profile '$name' already exists. Use 'ccc edit $name' to modify."
+
+  local desc="" base_url="" token="" model="" haiku="" opus="" sonnet="" reasoning="" model_alias=""
+
+  printf "${BOLD}Creating profile: %s${RESET}\n" "$name"
+  read -rp "Description (optional): " desc
+  read -rp "ANTHROPIC_BASE_URL: " base_url
+  [[ -z "$base_url" ]] && die "base_url is required"
+  read -rp "ANTHROPIC_AUTH_TOKEN: " token
+  [[ -z "$token" ]] && die "auth_token is required"
+  read -rp "ANTHROPIC_MODEL: " model
+  [[ -z "$model" ]] && die "model is required"
+  read -rp "ANTHROPIC_DEFAULT_HAIKU_MODEL (Enter = $model): " haiku
+  read -rp "ANTHROPIC_DEFAULT_OPUS_MODEL (Enter = $model): " opus
+  read -rp "ANTHROPIC_DEFAULT_SONNET_MODEL (Enter = $model): " sonnet
+  read -rp "ANTHROPIC_REASONING_MODEL (Enter = $model): " reasoning
+  read -rp "model alias (e.g. opus[1m], Enter to skip): " model_alias
+
+  [[ -z "$haiku" ]] && haiku="$model"
+  [[ -z "$opus" ]] && opus="$model"
+  [[ -z "$sonnet" ]] && sonnet="$model"
+  [[ -z "$reasoning" ]] && reasoning="$model"
+
+  jq -n \
+    --arg name "$name" \
+    --arg desc "$desc" \
+    --arg base_url "$base_url" \
+    --arg token "$token" \
+    --arg model "$model" \
+    --arg haiku "$haiku" \
+    --arg opus "$opus" \
+    --arg sonnet "$sonnet" \
+    --arg reasoning "$reasoning" \
+    --arg model_alias "$model_alias" \
+    '{
+      name: $name,
+      description: (if $desc != "" then $desc else null end),
+      env: {
+        ANTHROPIC_BASE_URL: $base_url,
+        ANTHROPIC_AUTH_TOKEN: $token,
+        ANTHROPIC_MODEL: $model,
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: $haiku,
+        ANTHROPIC_DEFAULT_OPUS_MODEL: $opus,
+        ANTHROPIC_DEFAULT_SONNET_MODEL: $sonnet,
+        ANTHROPIC_REASONING_MODEL: $reasoning
+      },
+      model: (if $model_alias != "" then $model_alias else null end)
+    } | with_entries(select(.value != null))' > "$file"
+
+  ok "profile '$name' created at $file"
+}
+
+cmd_edit() {
+  [[ "$MODE" != "standalone" ]] && die "'edit' is only available in standalone mode."
+  [[ ${#@} -lt 1 ]] && die "usage: ccc edit <name>"
+  resolve_name "$1"
+  local name="$RESOLVED_NAME"
+  local file
+  file=$(sa_profile_path "$name")
+  [[ -f "$file" ]] || die "profile '$name' not found"
+
+  local editor="${EDITOR:-vi}"
+  "$editor" "$file"
+  # validate JSON
+  if ! jq empty "$file" 2>/dev/null; then
+    warn "file is not valid JSON after editing"
+  else
+    ok "profile '$name' updated"
+  fi
+}
+
+cmd_rm() {
+  [[ "$MODE" != "standalone" ]] && die "'rm' is only available in standalone mode."
+  [[ ${#@} -lt 1 ]] && die "usage: ccc rm <name>"
+  resolve_name "$1"
+  local name="$RESOLVED_NAME"
+  local file
+  file=$(sa_profile_path "$name")
+  [[ -f "$file" ]] || die "profile '$name' not found"
+
+  read -rp "Remove profile '$name'? [y/N] " confirm
+  [[ "$confirm" =~ ^[yY]$ ]] || { info "cancelled"; return; }
+  rm "$file"
+
+  # clear current if it was this profile
+  if [[ -f "$CCC_CONFIG" ]]; then
+    local cur
+    cur=$(jq -r '.current // empty' "$CCC_CONFIG")
+    if [[ "$cur" == "$name" ]]; then
+      local tmp
+      tmp=$(mktemp)
+      jq 'del(.current)' "$CCC_CONFIG" > "$tmp" && mv "$tmp" "$CCC_CONFIG"
+    fi
+  fi
+
+  ok "profile '$name' removed"
+}
+
+cmd_import() {
+  [[ "$MODE" != "standalone" ]] && die "'import' is only available in standalone mode."
+  [[ ! -f "$CLAUDE_SETTINGS" ]] && die "no settings.json found at $CLAUDE_SETTINGS"
+  sa_ensure_dir
+
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    # derive name from base_url hostname
+    local url
+    url=$(jq -r '.env.ANTHROPIC_BASE_URL // ""' "$CLAUDE_SETTINGS")
+    if [[ -n "$url" ]]; then
+      name=$(echo "$url" | sed -E 's|https?://||; s|[:/].*||')
+      # sanitize
+      name=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '-')
+    fi
+    [[ -z "$name" ]] && die "cannot derive name from settings. Provide one: ccc import <name>"
+  fi
+
+  local file
+  file=$(sa_profile_path "$name")
+  [[ -f "$file" ]] && die "profile '$name' already exists"
+
+  jq '{
+    name: "'$name'",
+    env: (.env // {}),
+    model: (.model // null)
+  } | with_entries(select(.value != null))' "$CLAUDE_SETTINGS" > "$file"
+
+  ok "imported current settings as profile '$name'"
+}
+
+# ── Help ─────────────────────────────────────────────────────────────────────
+show_help() {
+  cat <<EOF
+${BOLD}ccc${RESET} v${VERSION} — Claude Code Change
+
+${BOLD}USAGE${RESET}
+  ccc [command] [options]
+
+${BOLD}COMMANDS${RESET}
+  list                  List all providers/profiles (default)
+  use <name> [-- args]  Launch claude with the given profile (no global change)
+  switch <name>         Switch globally (writes to settings.json)
+  current               Show the active provider
+  show <name>           Show provider details
+
+  ${DIM}Standalone mode only:${RESET}
+  add <name>            Create a new profile interactively
+  edit <name>           Edit a profile with \$EDITOR
+  rm <name>             Remove a profile
+  import [name]         Import current settings.json as a profile
+
+${BOLD}OPTIONS${RESET}
+  --standalone          Force standalone mode
+  --cc-switch           Force cc-switch mode
+  -h, --help            Show this help
+  -v, --version         Show version
+
+${BOLD}MODE${RESET}
+  Auto-detects cc-switch database (~/.cc-switch/cc-switch.db).
+  Override: CCC_MODE=standalone|ccswitch, or ~/.config/ccc/config.json
+
+${BOLD}EXAMPLES${RESET}
+  ccc                       List providers
+  ccc use kirors             Launch claude with 'kirors' provider
+  ccc use ki -- -c           Launch with prefix match, continue last session
+  ccc switch CPA             Switch globally to 'CPA'
+  ccc add my-proxy           Create a new standalone profile
+  ccc import                 Save current config as a profile
+EOF
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+main() {
+  FLAG_MODE=""
+  local cmd=""
+  local -a args=()
+
+  # Parse global flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --standalone) FLAG_MODE="standalone"; shift ;;
+      --cc-switch)  FLAG_MODE="ccswitch"; shift ;;
+      -h|--help)    show_help; exit 0 ;;
+      -v|--version) echo "ccc v${VERSION}"; exit 0 ;;
+      -*)           die "unknown option: $1" ;;
+      *)
+        if [[ -z "$cmd" ]]; then cmd="$1"; else args+=("$1"); fi
+        shift ;;
+    esac
+  done
+
+  check_jq
+  MODE=$(detect_mode)
+  [[ "$MODE" == "ccswitch" ]] && check_sqlite
+
+  # Default command
+  [[ -z "$cmd" ]] && cmd="list"
+
+  case "$cmd" in
+    list)    cmd_list ;;
+    use)     cmd_use "${args[@]}" ;;
+    switch)  cmd_switch "${args[@]}" ;;
+    current) cmd_current ;;
+    show)    cmd_show "${args[@]}" ;;
+    add)     cmd_add "${args[@]}" ;;
+    edit)    cmd_edit "${args[@]}" ;;
+    rm)      cmd_rm "${args[@]}" ;;
+    import)  cmd_import "${args[@]}" ;;
+    *)       die "unknown command: $cmd. Run 'ccc --help' for usage." ;;
+  esac
+}
+
+main "$@"
