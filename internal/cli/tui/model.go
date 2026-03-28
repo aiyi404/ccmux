@@ -324,25 +324,21 @@ func (m Model) View() string {
 	return full
 }
 func (m Model) renderHeader(width int) string {
-	title := styles.HeaderAccent.Render(" ccc ") + styles.HeaderStyle.Render(" v0.2.0")
-
 	providerName := i18n.T("none")
 	if p, err := m.state.Service.GetCurrent(); err == nil {
 		providerName = p.Name
 	}
-	right := styles.HeaderStyle.Render(
-		fmt.Sprintf("Provider: %s  Mode: %s",
-			styles.HeaderAccent.Render(providerName),
-			m.state.Mode),
-	)
+	right := fmt.Sprintf("Provider: %s  Mode: %s",
+		styles.HeaderAccent.Render(providerName),
+		m.state.Mode)
 
-	gap := width - lipgloss.Width(title) - lipgloss.Width(right)
-	if gap < 1 {
-		gap = 1
+	gap := width - lipgloss.Width(right) - 1
+	if gap < 0 {
+		gap = 0
 	}
 
 	return styles.HeaderStyle.Width(width).Render(
-		title + strings.Repeat(" ", gap) + right,
+		strings.Repeat(" ", gap) + right,
 	)
 }
 
