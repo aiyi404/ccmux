@@ -26,7 +26,7 @@ const (
 	PageSettings
 )
 
-const sidebarWidth = 16
+const sidebarWidth = 20
 
 // ExecSignal holds the result for post-TUI syscall.Exec.
 type ExecSignal struct {
@@ -284,12 +284,14 @@ func (m Model) View() string {
 
 	// Header
 	header := m.renderHeader(w)
+	headerHeight := lipgloss.Height(header)
 
 	// Footer
 	footer := m.renderFooter(w)
+	footerHeight := lipgloss.Height(footer)
 
-	// Body height = total - header(3) - footer(1) - borders
-	bodyHeight := h - 4
+	// Body height = total - header - footer
+	bodyHeight := h - headerHeight - footerHeight
 	if bodyHeight < 5 {
 		bodyHeight = 5
 	}
@@ -297,8 +299,8 @@ func (m Model) View() string {
 	// Sidebar
 	sidebar := m.renderSidebar(bodyHeight)
 
-	// Content
-	contentWidth := w - lipgloss.Width(sidebar) - 2
+	// Content — use same bodyHeight so boxes align
+	contentWidth := w - lipgloss.Width(sidebar)
 	if contentWidth < 20 {
 		contentWidth = 20
 	}

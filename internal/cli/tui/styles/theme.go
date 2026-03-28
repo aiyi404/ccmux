@@ -61,8 +61,7 @@ var (
 				Background(Cyan).
 				Foreground(lipgloss.Color("#282a36")).
 				Bold(true).
-				PaddingLeft(1).
-				PaddingRight(1)
+				PaddingLeft(1)
 
 	// Content area
 	ContentStyle = lipgloss.NewStyle().
