@@ -373,17 +373,15 @@ func (m Model) renderHeader(width int) string {
 	if p, err := m.state.Service.GetCurrent(); err == nil {
 		providerName = p.Name
 	}
-	right := fmt.Sprintf("Provider: %s",
-		styles.HeaderAccent.Render(providerName))
+	right := "Provider: " + providerName
 
-	gap := width - lipgloss.Width(right) - 1
+	gap := width - len(right) - 2
 	if gap < 0 {
 		gap = 0
 	}
 
-	return styles.HeaderStyle.Width(width).Render(
-		strings.Repeat(" ", gap) + right,
-	)
+	line := strings.Repeat(" ", gap) + right
+	return styles.HeaderStyle.Width(width).Render(line)
 }
 
 func (m Model) renderSidebar(height int) string {
