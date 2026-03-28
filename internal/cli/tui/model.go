@@ -283,6 +283,11 @@ func (m Model) View() string {
 		h = 24
 	}
 
+	// Logo banner (always visible)
+	logoText := strings.Join(animations.LogoLines, "\n")
+	logoBanner := styles.LogoStyle.Render(logoText) + "  " + styles.VersionStyle.Render("v0.2.0")
+	logoHeight := lipgloss.Height(logoBanner)
+
 	// Header
 	header := m.renderHeader(w)
 	headerHeight := lipgloss.Height(header)
@@ -291,8 +296,8 @@ func (m Model) View() string {
 	footer := m.renderFooter(w)
 	footerHeight := lipgloss.Height(footer)
 
-	// Body height = total - header - footer
-	bodyHeight := h - headerHeight - footerHeight
+	// Body height = total - header - logo - footer
+	bodyHeight := h - headerHeight - logoHeight - footerHeight
 	if bodyHeight < 5 {
 		bodyHeight = 5
 	}
@@ -309,7 +314,7 @@ func (m Model) View() string {
 
 	// Compose
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, content)
-	full := lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
+	full := lipgloss.JoinVertical(lipgloss.Left, header, logoBanner, body, footer)
 
 	// Overlay feedback
 	if m.feedback != nil {
