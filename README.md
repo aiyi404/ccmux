@@ -25,7 +25,7 @@ ccmux (`ccc`) fixes both:
 - Global provider switching with automatic backup
 - Interactive TUI with sidebar navigation, Dracula theme (powered by [bubbletea](https://github.com/charmbracelet/bubbletea))
 - Fuzzy name matching (case-insensitive prefix)
-- Import from [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli) database via `ccc import-all`
+- Import from [cc-switch](https://github.com/farion1231/cc-switch) database via `ccc import-all`
 - Single binary, no runtime dependencies
 - EN/ZH bilingual support
 

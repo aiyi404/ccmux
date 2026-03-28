@@ -25,7 +25,7 @@ ccmux（命令：`ccc`）解决这两个问题：
 - 全局切换 + 自动备份
 - 交互式 TUI，侧边栏导航，Dracula 主题（基于 [bubbletea](https://github.com/charmbracelet/bubbletea)）
 - 模糊名称匹配（大小写不敏感前缀匹配）
-- 从 [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli) 数据库一键导入：`ccc import-all`
+- 从 [cc-switch](https://github.com/farion1231/cc-switch) 数据库一键导入：`ccc import-all`
 - 单二进制文件，无运行时依赖
 - 中英双语支持
 
