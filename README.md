@@ -4,10 +4,15 @@
 
 Manage multiple Claude Code API providers and switch between them instantly — per-session isolation, no config conflicts.
 
-```
-$ ccc use openrouter
-▸ launching claude with profile 'openrouter'
-```
+## Screenshots
+
+| Provider List | Provider Actions |
+|:---:|:---:|
+| ![Provider List](assets/screenshots/provider-list.png) | ![Provider Actions](assets/screenshots/provider-actions.png) |
+
+| Add Provider | Multi-Session Isolation |
+|:---:|:---:|
+| ![Add Provider](assets/screenshots/add-provider.png) | ![Multi-Session](assets/screenshots/multi-session.png) |
 
 ## Why
 

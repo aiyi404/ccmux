@@ -4,10 +4,15 @@
 
 管理多个 Claude Code API 服务商，按会话独立使用——秒切，零冲突。
 
-```
-$ ccc use openrouter
-▸ launching claude with profile 'openrouter'
-```
+## 截图
+
+| 服务商列表 | 服务商操作 |
+|:---:|:---:|
+| ![服务商列表](assets/screenshots/provider-list.png) | ![服务商操作](assets/screenshots/provider-actions.png) |
+
+| 新增服务商 | 多终端会话隔离 |
+|:---:|:---:|
+| ![新增服务商](assets/screenshots/add-provider.png) | ![多终端](assets/screenshots/multi-session.png) |
 
 ## 为什么
 
