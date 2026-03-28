@@ -35,9 +35,8 @@ type Model struct {
 	width      int
 	height     int
 
-	logo       animations.LogoModel
-	transition animations.TransitionModel
-	feedback   *animations.FeedbackModel
+	logo     animations.LogoModel
+	feedback *animations.FeedbackModel
 
 	mainMenu   pages.MainMenuModel
 	providers  pages.ProvidersModel
@@ -51,8 +50,7 @@ func NewModel(state *store.AppState) Model {
 	return Model{
 		state:      state,
 		page:       PageLogo,
-		logo:       animations.NewLogoModel(),
-		transition: animations.NewTransition(),
+		logo:     animations.NewLogoModel(),
 		mainMenu:   pages.NewMainMenu(),
 		providers:  pages.NewProviders(state),
 		settings:   pages.NewSettings(state),
@@ -88,14 +86,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update transition animation
-	trans, transCmd := m.transition.Update(msg)
-	m.transition = trans
-
 	var cmds []tea.Cmd
-	if transCmd != nil {
-		cmds = append(cmds, transCmd)
-	}
 
 	switch m.page {
 	case PageLogo:
@@ -106,7 +97,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.logo.Done() {
 			m.page = PageMainMenu
-			cmds = append(cmds, m.transition.Start())
 		}
 // PLACEHOLDER_MODEL_UPDATE_CONT
 	case PageMainMenu:
@@ -136,7 +126,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case pages.MainMenuProviders:
 			m.providers.Refresh()
 			m.page = PageProviders
-			cmds = append(cmds, m.transition.Start())
 		case pages.MainMenuCurrent:
 			p, err := m.state.Service.GetCurrent()
 			info := ""
@@ -153,7 +142,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case pages.MainMenuSettings:
 			m.settings = pages.NewSettings(m.state)
 			m.page = PageSettings
-			cmds = append(cmds, m.transition.Start())
 		case pages.MainMenuExit:
 			m.quitting = true
 			return m, tea.Quit
@@ -232,7 +220,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case pages.GoBackMsg:
 		m.page = PageMainMenu
 		m.mainMenu = pages.NewMainMenu()
-		cmds = append(cmds, m.transition.Start())
 
 	case pages.EditConfigMsg:
 		editor := os.Getenv("EDITOR")
@@ -283,12 +270,6 @@ func (m Model) View() string {
 		content = "\n" + m.providers.View()
 	case PageSettings:
 		content = "\n" + m.settings.View()
-	}
-
-	// Apply transition animation offset
-	if !m.transition.Done() && m.width > 0 {
-		offset := m.transition.Offset(m.width)
-		content = lipgloss.NewStyle().MarginLeft(offset).Render(content)
 	}
 
 	// Overlay feedback animation
