@@ -38,39 +38,28 @@ func RunSwitch(state *store.AppState, name string) error {
 	if p != nil {
 		providerName = p.Name
 	}
-	if state.Mode == "ccswitch" {
-		data, err := json.MarshalIndent(overlay, "", "  ")
-		if err != nil {
-			return err
-		}
-		os.MkdirAll(filepath.Dir(config.ClaudeSettings), 0755)
-		if err := os.WriteFile(config.ClaudeSettings, data, 0644); err != nil {
-			return err
-		}
-	} else {
-		existing := make(map[string]interface{})
-		if data, err := os.ReadFile(config.ClaudeSettings); err == nil {
-			json.Unmarshal(data, &existing)
-		}
-		existingEnv, _ := existing["env"].(map[string]interface{})
-		if existingEnv == nil {
-			existingEnv = make(map[string]interface{})
-		}
-		for k, v := range overlay.Env {
-			existingEnv[k] = v
-		}
-		existing["env"] = existingEnv
-		if overlay.Model != "" {
-			existing["model"] = overlay.Model
-		}
-		data, err := json.MarshalIndent(existing, "", "  ")
-		if err != nil {
-			return err
-		}
-		os.MkdirAll(filepath.Dir(config.ClaudeSettings), 0755)
-		if err := os.WriteFile(config.ClaudeSettings, data, 0644); err != nil {
-			return err
-		}
+	existing := make(map[string]interface{})
+	if data, err := os.ReadFile(config.ClaudeSettings); err == nil {
+		json.Unmarshal(data, &existing)
+	}
+	existingEnv, _ := existing["env"].(map[string]interface{})
+	if existingEnv == nil {
+		existingEnv = make(map[string]interface{})
+	}
+	for k, v := range overlay.Env {
+		existingEnv[k] = v
+	}
+	existing["env"] = existingEnv
+	if overlay.Model != "" {
+		existing["model"] = overlay.Model
+	}
+	data, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(filepath.Dir(config.ClaudeSettings), 0755)
+	if err := os.WriteFile(config.ClaudeSettings, data, 0644); err != nil {
+		return err
 	}
 	if err := state.Service.SetCurrent(providerName); err != nil {
 		return err

@@ -15,7 +15,7 @@ func setupStandaloneTest(t *testing.T) (*StandaloneService, string) {
 	profilesDir := filepath.Join(dir, "profiles")
 	os.MkdirAll(profilesDir, 0755)
 	configPath := filepath.Join(dir, "config.json")
-	cfg := &config.AppConfig{Mode: "standalone"}
+	cfg := &config.AppConfig{}
 	svc := NewStandaloneService(cfg, configPath, profilesDir)
 	return svc, profilesDir
 }

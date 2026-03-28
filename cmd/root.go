@@ -5,11 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	flagStandalone bool
-	flagCCSwitch   bool
-)
-
 var rootCmd = &cobra.Command{
 	Use:     "ccc",
 	Short:   "Claude Code Provider Multiplexer",
@@ -21,20 +16,11 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&flagStandalone, "standalone", false, "Force standalone mode")
-	rootCmd.PersistentFlags().BoolVar(&flagCCSwitch, "cc-switch", false, "Force cc-switch mode")
-
 	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return tuiCmd.RunE(cmd, args)
 	}
 }
 
 func getState() (*store.AppState, error) {
-	flagMode := ""
-	if flagStandalone {
-		flagMode = "standalone"
-	} else if flagCCSwitch {
-		flagMode = "ccswitch"
-	}
-	return store.New(flagMode)
+	return store.New()
 }

@@ -53,10 +53,8 @@ func NewProviders(state *store.AppState) ProvidersModel {
 	actions := []string{i18n.T("view_details"), i18n.T("switch_global"), i18n.T("use_session")}
 	actionMap := []ProviderAction{ProviderActionViewDetails, ProviderActionSwitchGlobal, ProviderActionUseSession}
 
-	if state.Mode == "standalone" {
-		actions = append(actions, i18n.T("add_provider"), i18n.T("edit_provider"), i18n.T("remove_provider"), i18n.T("import_settings"))
-		actionMap = append(actionMap, ProviderActionAdd, ProviderActionEdit, ProviderActionRemove, ProviderActionImport)
-	}
+	actions = append(actions, i18n.T("add_provider"), i18n.T("edit_provider"), i18n.T("remove_provider"), i18n.T("import_settings"))
+	actionMap = append(actionMap, ProviderActionAdd, ProviderActionEdit, ProviderActionRemove, ProviderActionImport)
 	actions = append(actions, i18n.T("back"))
 	actionMap = append(actionMap, ProviderActionBack)
 
@@ -81,7 +79,7 @@ func (m ProvidersModel) Update(msg tea.Msg) (ProvidersModel, tea.Cmd) {
 		}
 
 		// When no providers, always show action menu
-		if !m.hasProviders() && m.state.Mode == "standalone" {
+		if !m.hasProviders() {
 			switch msg.String() {
 			case "up", "k":
 				if m.actionIdx > 0 {
@@ -158,13 +156,11 @@ func (m ProvidersModel) View() string {
 	if !m.hasProviders() {
 		// Empty list — show add/import actions directly
 		s += styles.Dim.Render(i18n.T("err_no_providers")) + "\n\n"
-		if m.state.Mode == "standalone" {
-			for i, a := range m.actions {
-				if i == m.actionIdx {
-					s += styles.MenuSelectedStyle.Render("▸ "+a) + "\n"
-				} else {
-					s += styles.MenuItemStyle.Render("  "+a) + "\n"
-				}
+		for i, a := range m.actions {
+			if i == m.actionIdx {
+				s += styles.MenuSelectedStyle.Render("▸ "+a) + "\n"
+			} else {
+				s += styles.MenuItemStyle.Render("  "+a) + "\n"
 			}
 		}
 		return s

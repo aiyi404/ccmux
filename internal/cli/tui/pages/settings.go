@@ -16,9 +16,6 @@ type SettingsModel struct {
 	state       *store.AppState
 	choices     []string
 	cursor      int
-	modeMenu    bool
-	modeChoices []string
-	modeCursor  int
 	langMenu    bool
 	langChoices []string
 	langCursor  int
@@ -37,12 +34,10 @@ func NewSettings(state *store.AppState) SettingsModel {
 	return SettingsModel{
 		state: state,
 		choices: []string{
-			fmt.Sprintf("%s (current: %s)", i18n.T("switch_mode"), state.Mode),
 			fmt.Sprintf("%s (%s)", i18n.T("switch_lang"), langDisplay(state.Lang)),
 			i18n.T("open_config"),
 			i18n.T("back"),
 		},
-		modeChoices: []string{"auto", "standalone", "ccswitch"},
 		langChoices: []string{"English", "中文"},
 	}
 }
@@ -52,27 +47,6 @@ func (m SettingsModel) Init() tea.Cmd { return nil }
 func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.modeMenu {
-			switch msg.String() {
-			case "up", "k":
-				if m.modeCursor > 0 {
-					m.modeCursor--
-				}
-			case "down", "j":
-				if m.modeCursor < len(m.modeChoices)-1 {
-					m.modeCursor++
-				}
-			case "enter":
-				newMode := m.modeChoices[m.modeCursor]
-				m.state.Config.Mode = newMode
-				config.SaveConfig(m.state.Config)
-				m.modeMenu = false
-				m.choices[0] = fmt.Sprintf("%s (current: %s)", i18n.T("switch_mode"), newMode)
-			case "esc":
-				m.modeMenu = false
-			}
-			return m, nil
-		}
 		if m.langMenu {
 			switch msg.String() {
 			case "up", "k":
@@ -93,7 +67,7 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 				i18n.SetLang(newLang)
 				config.SaveConfig(m.state.Config)
 				m.langMenu = false
-				m.choices[1] = fmt.Sprintf("%s (%s)", i18n.T("switch_lang"), langDisplay(newLang))
+				m.choices[0] = fmt.Sprintf("%s (%s)", i18n.T("switch_lang"), langDisplay(newLang))
 			case "esc":
 				m.langMenu = false
 			}
@@ -112,14 +86,11 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		case "enter":
 			switch m.cursor {
 			case 0:
-				m.modeMenu = true
-				m.modeCursor = 0
-			case 1:
 				m.langMenu = true
 				m.langCursor = 0
-			case 2:
+			case 1:
 				return m, func() tea.Msg { return EditConfigMsg{} }
-			case 3:
+			case 2:
 				return m, func() tea.Msg { return GoBackMsg{} }
 			}
 		case "esc", "q":
@@ -141,21 +112,9 @@ func padLabel(label string, width int) string {
 func (m SettingsModel) View() string {
 	s := styles.TitleStyle.Render("⚙ "+i18n.T("settings")) + "\n\n"
 	const labelW = 16
-	s += styles.Dim.Render(padLabel(i18n.T("mode_label"), labelW)) + styles.ValueStyle.Render(m.state.Mode) + "\n"
 	s += styles.Dim.Render(padLabel(i18n.T("config_path"), labelW)) + styles.ValueStyle.Render(config.CCCConfig) + "\n"
 	s += styles.Dim.Render(padLabel(i18n.T("profiles_dir"), labelW)) + styles.ValueStyle.Render(config.CCCProfiles) + "\n"
 	s += styles.Dim.Render(padLabel(i18n.T("lang_label"), labelW)) + styles.ValueStyle.Render(langDisplay(m.state.Lang)) + "\n\n"
-	if m.modeMenu {
-		s += styles.Bold.Render(i18n.T("select_mode")) + "\n"
-		for i, c := range m.modeChoices {
-			if i == m.modeCursor {
-				s += styles.MenuSelectedStyle.Render("▸ "+c) + "\n"
-			} else {
-				s += styles.MenuItemStyle.Render("  "+c) + "\n"
-			}
-		}
-		return s
-	}
 	if m.langMenu {
 		s += styles.Bold.Render(i18n.T("select_lang")) + "\n"
 		for i, c := range m.langChoices {

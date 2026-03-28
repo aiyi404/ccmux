@@ -328,9 +328,8 @@ func (m Model) renderHeader(width int) string {
 	if p, err := m.state.Service.GetCurrent(); err == nil {
 		providerName = p.Name
 	}
-	right := fmt.Sprintf("Provider: %s  Mode: %s",
-		styles.HeaderAccent.Render(providerName),
-		m.state.Mode)
+	right := fmt.Sprintf("Provider: %s",
+		styles.HeaderAccent.Render(providerName))
 
 	gap := width - lipgloss.Width(right) - 1
 	if gap < 0 {
@@ -420,7 +419,6 @@ func (m Model) renderHome() string {
 
 	providers, _ := m.state.Service.List()
 	s += styles.Dim.Render(padLabel("Providers", lw)) + styles.ValueStyle.Render(fmt.Sprintf("%d", len(providers))) + "\n"
-	s += styles.Dim.Render(padLabel("Mode", lw)) + styles.ValueStyle.Render(m.state.Mode) + "\n"
 	s += styles.Dim.Render(padLabel("Language", lw)) + styles.ValueStyle.Render(m.state.Lang) + "\n"
 
 	return s

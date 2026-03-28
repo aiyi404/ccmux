@@ -7,13 +7,12 @@ import (
 )
 
 type AppConfig struct {
-	Mode    string `json:"mode"`
 	Lang    string `json:"lang,omitempty"`
 	Current string `json:"current,omitempty"`
 }
 
 func LoadConfigFrom(path string) (*AppConfig, error) {
-	cfg := &AppConfig{Mode: "auto"}
+	cfg := &AppConfig{}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
