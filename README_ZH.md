@@ -4,169 +4,107 @@
 
 管理多个 Claude Code API 服务商，按会话独立使用——秒切，零冲突。
 
-> Claude Code 多服务商管理 | 切换 API 服务商 | 会话级隔离 | Profile 管理 | 支持 OpenRouter / AWS Bedrock / Anthropic API / 代理中转
-
 ```
-$ ccc
-  NAME               BASE_URL                    MODEL
-→ my-proxy           proxy.example.com:8990      claude-opus-4-6-thinking
-  openrouter         openrouter.ai/api           openrouter/pony-alpha
-  bedrock            bedrock.us-east-1           claude-sonnet-4-6
-
 $ ccc use openrouter
 ▸ launching claude with profile 'openrouter'
 ```
 
-## 为什么需要
+## 为什么
 
-用 Claude Code 对接多个 API 服务商（Anthropic 直连、反向代理、OpenRouter、AWS Bedrock、Google Vertex、社区中转等）时，有两个痛点：每次切换都要手动改 `~/.claude/settings.json`，而且没法在不同终端同时使用不同的服务商。
+如果你同时使用多个 Claude Code API 服务商（Anthropic 直连、反向代理、OpenRouter、AWS Bedrock、Google Vertex），每次切换都要手动编辑 `~/.claude/settings.json`，而且无法在不同终端同时使用不同服务商。
 
-ccmux（命令：`ccc`）同时解决这两个问题：
+ccmux（命令：`ccc`）解决这两个问题：
 
-- `ccc use <name>` — 在**当前会话**使用指定服务商启动 Claude Code（不改全局配置）
-- `ccc switch <name>` — 全局切换，所有新会话生效
-- **不同会话同时使用不同服务商**——哪怕在同一个终端里，互不干扰
+- `ccc use <name>` — 用指定服务商启动 Claude Code，**仅当前会话生效**（不改全局配置）
+- `ccc switch <name>` — 全局切换默认服务商
+- 多个终端**同时使用不同服务商**，互不干扰
 
-## 特性
+## 功能
 
-- 会话级服务商隔离，基于 Claude Code 原生 `--settings` 覆盖机制
-- 全局切换自动备份
-- 交互式 TUI，可视化菜单、模糊搜索、表单输入（基于 [gum](https://github.com/charmbracelet/gum)）
-- 模糊名称匹配（大小写不敏感、前缀匹配）
-- 自动集成 [CC-Switch](https://github.com/farion1231/cc-switch) GUI，也可完全独立使用
-- 零配置启动——`ccc import` 一键快照当前配置
-- 单文件 shell 脚本，无需编译，唯一依赖 `jq`
+- 会话级服务商隔离（基于 Claude Code 原生 `--settings` 覆盖）
+- 全局切换 + 自动备份
+- 交互式 TUI，侧边栏导航，Dracula 主题（基于 [bubbletea](https://github.com/charmbracelet/bubbletea)）
+- 模糊名称匹配（大小写不敏感前缀匹配）
+- 从 [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli) 数据库一键导入：`ccc import-all`
+- 单二进制文件，无运行时依赖
+- 中英双语支持
 
 ## 安装
 
 ```bash
-# 方式一：一键安装
-curl -fsSL https://raw.githubusercontent.com/aiyi404/ccmux/main/install.sh | bash
-
-# 方式二：克隆安装
+# 克隆并安装（需要 Go 1.22+）
 git clone https://github.com/aiyi404/ccmux.git
 cd ccmux && ./install.sh
-
-# 方式三：直接软链接
-ln -sf /path/to/ccmux/ccc ~/.local/bin/ccc
 ```
 
-依赖 `jq`（`brew install jq` / `apt install jq`）。
-
-可选：安装 [gum](https://github.com/charmbracelet/gum) 以获得交互式 TUI 体验：
+或手动构建：
 
 ```bash
-# macOS
-brew install gum
-
-# Go
-go install github.com/charmbracelet/gum@latest
+go build -ldflags="-s -w" -o ccc .
+mv ccc ~/.local/bin/
 ```
 
-安装 `gum` 后，`ccc`（无参数）会启动交互式 TUI 菜单。未安装时所有命令回退为纯文本模式，功能不受影响。
-
-## 快速上手
-
-### 独立模式（无需其他依赖）
+## 快速开始
 
 ```bash
-# 从当前配置导入为 profile
+# 导入当前 settings.json 为 profile
 ccc import my-proxy
 
 # 交互式创建新 profile
 ccc add openrouter
 
 # 列出所有 profile
-ccc
+ccc list
 
-# 在当前终端使用指定 profile（不改全局）
+# 在当前终端使用指定 profile（不改全局配置）
 ccc use openrouter
 
 # 全局切换（写入 settings.json）
 ccc switch my-proxy
+
+# 启动交互式 TUI
+ccc
 ```
 
-### 配合 CC-Switch 使用
+### 从 cc-switch-cli 迁移
 
-如果你安装了 [CC-Switch](https://github.com/farion1231/cc-switch)，`ccc` 会自动检测其数据库并直接读取服务商配置——无需额外设置。你在 GUI 中配置的所有服务商，命令行里立即可用。
+如果你安装了 [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli)，一键导入所有服务商：
 
 ```bash
-# 列出 CC-Switch 中的所有服务商
-ccc
-
-# 使用任意服务商
-ccc use kirors
-
-# 全局切换（同步回 CC-Switch）
-ccc switch CPA
+ccc import-all
 ```
 
-## 命令参考
+按 `ANTHROPIC_BASE_URL` + `ANTHROPIC_MODEL` 去重，已有的 profile 不会被覆盖。首次启动 TUI 时，ccmux 会自动检测 cc-switch 并提示导入。
+
+## 命令
 
 | 命令 | 说明 |
 |------|------|
-| `ccc` | 交互式 TUI 菜单（有 `gum`）或列出服务商（无 `gum`） |
-| `ccc list` | 列出所有服务商，`→` 标记当前活跃的 |
-| `ccc use [name] [-- args]` | 用指定服务商启动 Claude Code（仅当前终端，不改全局） |
-| `ccc switch [name]` | 全局切换，写入 `settings.json` |
-| `ccc current` | 显示当前活跃的服务商 |
-| `ccc show [name]` | 查看服务商配置详情（token 自动脱敏） |
-| `ccc tui` | 启动交互式 TUI 菜单（需要 `gum`） |
-
-安装 `gum` 后，省略 `[name]` 参数时会弹出模糊搜索选择器。
-
-### 仅独立模式可用
-
-| 命令 | 说明 |
-|------|------|
-| `ccc add [name]` | 交互式创建新 profile |
-| `ccc edit [name]` | 用 `$EDITOR` 编辑 profile |
-| `ccc rm [name]` | 删除 profile |
-| `ccc import [name]` | 将当前 `settings.json` 导入为 profile |
-
-### 选项
-
-| 标志 | 说明 |
-|------|------|
-| `--standalone` | 强制使用独立模式（忽略 CC-Switch） |
-| `--cc-switch` | 强制使用 CC-Switch 模式 |
-| `-h, --help` | 显示帮助 |
-| `-v, --version` | 显示版本 |
-
-## 交互式 TUI
-
-安装 [gum](https://github.com/charmbracelet/gum) 后，`ccc` 提供可视化交互体验：
-
-- `ccc`（无参数）— 启动完整 TUI 菜单，带样式化标题和操作选择器
-- `ccc add` — 样式化表单输入，token 密码遮蔽，JSON 预览和确认
-- `ccc use` / `ccc switch` / `ccc show` / `ccc edit` / `ccc rm` — 省略名称时弹出模糊搜索选择器
-- `ccc list` — 带边框的表格输出
-- `ccc rm` — 样式化确认对话框
-
-未安装 `gum` 时，所有功能自动回退为纯文本模式。
+| `ccc` | 启动交互式 TUI |
+| `ccc list` | 列出所有服务商，`→` 标记当前激活的 |
+| `ccc use <name> [-- args]` | 用指定服务商启动 Claude Code（会话级） |
+| `ccc switch <name>` | 全局切换（写入 settings.json） |
+| `ccc current` | 显示当前服务商 |
+| `ccc show <name>` | 显示服务商详情（token 自动脱敏） |
+| `ccc add <name>` | 交互式创建 profile |
+| `ccc edit <name>` | 用 $EDITOR 编辑 profile |
+| `ccc rm <name>` | 删除 profile |
+| `ccc import [name]` | 从 settings.json 导入为 profile |
+| `ccc import-all` | 从 cc-switch 数据库批量导入 |
 
 ## 会话级服务商隔离
 
-核心能力。每次 `ccc use` 启动一个独立的 Claude Code 会话，使用各自的服务商——哪怕在同一个终端里，前后两次会话也可以用不同的服务商：
+核心功能。`ccc use` 为当前会话启动独立的 Claude Code 实例：
 
 ```bash
-# 会话 1 — 快速模型处理简单任务
+# 终端 A — 快速模型
 ccc use sonnet-proxy
 
-# （退出后，在同一个终端启动新会话）
-
-# 会话 2 — opus 处理复杂架构工作
-ccc use opus-proxy
-
-# 也可以在多个终端并行运行不同会话：
-# 终端 A
-ccc use openrouter -- -c       # 继续上次对话
-
-# 终端 B
-ccc use bedrock -- -p "hello"  # print 模式
+# 终端 B — opus 处理复杂任务
+ccc use opus-proxy -- -c    # 继续上次对话
 ```
 
-底层原理：`ccc use` 通过 Claude Code 原生的 `--settings` 选项注入配置。全局 `~/.claude/settings.json` 保持不变——hooks、权限、插件、MCP 服务器等配置不受影响。
+底层通过临时 settings 文件 + `--settings` 参数实现。全局 `~/.claude/settings.json` 不受影响——hooks、权限、MCP 服务器等配置保持不变。
 
 ## 模糊匹配
 
@@ -174,99 +112,44 @@ ccc use bedrock -- -p "hello"  # print 模式
 
 ```bash
 ccc use op        # 匹配 "openrouter"
-ccc switch cpa    # 匹配 "CPA"
-ccc show ki       # 有歧义 → 列出候选：kirors, Kimi2.5, Kiro...
+ccc switch ki     # 匹配 "kirors"
 ```
 
-## Profile 格式（独立模式）
+## Profile 格式
 
-Profile 文件存放在 `~/.config/ccc/profiles/<name>.json`：
+Profile 存储在 `~/.config/ccc/profiles/<name>.json`：
 
 ```json
 {
   "name": "my-proxy",
-  "description": "我的 API 代理",
   "env": {
     "ANTHROPIC_BASE_URL": "http://proxy.example.com:8990",
     "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
-    "ANTHROPIC_MODEL": "claude-opus-4-6-thinking",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6-thinking",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6-thinking",
-    "ANTHROPIC_REASONING_MODEL": "claude-opus-4-6-thinking"
+    "ANTHROPIC_MODEL": "claude-opus-4-6-thinking"
   },
   "model": "opus[1m]"
 }
 ```
 
-只有 `env` 和 `model` 会传给 Claude Code。`name` 和 `description` 是 `ccc` 自用的元数据。
+## 配置
 
-最简配置——只填你要覆盖的字段：
-
-```json
-{
-  "name": "minimal",
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.example.com",
-    "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-6"
-  }
-}
-```
-
-## 配置文件
-
-可选配置文件 `~/.config/ccc/config.json`：
+配置文件位于 `~/.config/ccc/config.json`：
 
 ```json
 {
-  "mode": "auto",
-  "default_profile": "my-proxy"
+  "lang": "zh",
+  "current": "my-proxy"
 }
 ```
 
-| 字段 | 可选值 | 说明 |
-|------|--------|------|
-| `mode` | `"auto"` / `"standalone"` / `"ccswitch"` | 覆盖模式检测 |
-| `default_profile` | profile 名称 | `ccc use` 不带参数时的默认 profile |
+| 字段 | 说明 |
+|------|------|
+| `lang` | 界面语言：`"en"` 或 `"zh"` |
+| `current` | 当前激活的 profile 名称 |
 
-环境变量：`CCC_MODE=standalone` 或 `CCC_MODE=ccswitch`。
+## 依赖
 
-## 工作原理
-
-### `ccc use`（会话级）
-
-利用 Claude Code 原生的 `--settings` 选项注入服务商配置作为覆盖层。全局 `~/.claude/settings.json` 保持不变——hooks、权限、插件等配置不受影响。
-
-### `ccc switch`（全局）
-
-将服务商配置写入 `~/.claude/settings.json`（自动备份到 `~/.claude/backups/`）。在 CC-Switch 模式下，还会同步数据库的 `is_current` 标记，使 GUI 界面反映变更。
-
-## 双模式架构
-
-| | CC-Switch 模式 | 独立模式 |
-|---|---|---|
-| 数据来源 | `~/.cc-switch/cc-switch.db` | `~/.config/ccc/profiles/*.json` |
-| 自动启用条件 | CC-Switch 数据库存在 | 未检测到 CC-Switch |
-| 服务商管理 | 在 CC-Switch GUI 中操作 | `ccc add/edit/rm/import` |
-| 额外依赖 | `sqlite3`（macOS/Linux 自带） | 无 |
-
-## 与 CC-Switch 生态的关系
-
-- [CC-Switch](https://github.com/farion1231/cc-switch) — GUI 桌面应用，管理 AI 编程工具配置
-- [CC-Switch CLI](https://github.com/SaladDay/cc-switch-cli) — 全功能 Rust CLI（服务商 + MCP + 代理 + 技能 + TUI）
-- **ccmux** — 轻量 shell 脚本，专注快速切换服务商和会话级隔离
-
-ccmux 是 CC-Switch 的命令行伴侣，不是替代品。需要 MCP 管理、代理路由或技能同步？用 CC-Switch CLI。只想快速切换服务商、不同会话用不同服务商？用 ccmux。
-
-ccmux 也可以完全独立使用，无需安装 CC-Switch。
-
-## 系统要求
-
-- `bash` 3.2+（macOS 默认版本）或 `zsh`
-- `jq` — JSON 处理工具
-- `gum` — 可选，用于交互式 TUI（[安装方式](https://github.com/charmbracelet/gum#installation)）
-- `sqlite3` — 仅 CC-Switch 模式需要（macOS/Linux 自带）
+- Go 1.22+（仅构建时需要）
 - Claude Code CLI（`claude`）
 
 ## 许可证
