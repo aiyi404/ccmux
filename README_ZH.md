@@ -8,11 +8,11 @@
 
 | 服务商列表 | 服务商操作 |
 |:---:|:---:|
-| ![服务商列表](assets/screenshots/provider-list.png) | ![服务商操作](assets/screenshots/provider-actions.png) |
+| ![服务商列表](assets/screenshots/providers-list.png) | ![服务商操作](assets/screenshots/provider-actions.png) |
 
 | 新增服务商 | 多终端会话隔离 |
 |:---:|:---:|
-| ![新增服务商](assets/screenshots/add-provider.png) | ![多终端](assets/screenshots/multi-session.png) |
+| ![新增服务商](assets/screenshots/add-provider.png) | ![多终端](assets/screenshots/multi-sessions.png) |
 
 ## 为什么
 

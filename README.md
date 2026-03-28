@@ -8,11 +8,11 @@ Manage multiple Claude Code API providers and switch between them instantly — 
 
 | Provider List | Provider Actions |
 |:---:|:---:|
-| ![Provider List](assets/screenshots/provider-list.png) | ![Provider Actions](assets/screenshots/provider-actions.png) |
+| ![Providers List](assets/screenshots/providers-list.png) | ![Provider Actions](assets/screenshots/provider-actions.png) |
 
 | Add Provider | Multi-Session Isolation |
 |:---:|:---:|
-| ![Add Provider](assets/screenshots/add-provider.png) | ![Multi-Session](assets/screenshots/multi-session.png) |
+| ![Add Provider](assets/screenshots/add-provider.png) | ![Multi-Session](assets/screenshots/multi-sessions.png) |
 
 ## Why
 
