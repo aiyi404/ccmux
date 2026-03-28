@@ -31,6 +31,7 @@ ccmux（命令：`ccc`）同时解决这两个问题：
 
 - 会话级服务商隔离，基于 Claude Code 原生 `--settings` 覆盖机制
 - 全局切换自动备份
+- 交互式 TUI，可视化菜单、模糊搜索、表单输入（基于 [gum](https://github.com/charmbracelet/gum)）
 - 模糊名称匹配（大小写不敏感、前缀匹配）
 - 自动集成 [CC-Switch](https://github.com/farion1231/cc-switch) GUI，也可完全独立使用
 - 零配置启动——`ccc import` 一键快照当前配置
@@ -51,6 +52,18 @@ ln -sf /path/to/ccmux/ccc ~/.local/bin/ccc
 ```
 
 依赖 `jq`（`brew install jq` / `apt install jq`）。
+
+可选：安装 [gum](https://github.com/charmbracelet/gum) 以获得交互式 TUI 体验：
+
+```bash
+# macOS
+brew install gum
+
+# Go
+go install github.com/charmbracelet/gum@latest
+```
+
+安装 `gum` 后，`ccc`（无参数）会启动交互式 TUI 菜单。未安装时所有命令回退为纯文本模式，功能不受影响。
 
 ## 快速上手
 
@@ -92,19 +105,23 @@ ccc switch CPA
 
 | 命令 | 说明 |
 |------|------|
-| `ccc` / `ccc list` | 列出所有服务商，`→` 标记当前活跃的 |
-| `ccc use <name> [-- args]` | 用指定服务商启动 Claude Code（仅当前终端，不改全局） |
-| `ccc switch <name>` | 全局切换，写入 `settings.json` |
+| `ccc` | 交互式 TUI 菜单（有 `gum`）或列出服务商（无 `gum`） |
+| `ccc list` | 列出所有服务商，`→` 标记当前活跃的 |
+| `ccc use [name] [-- args]` | 用指定服务商启动 Claude Code（仅当前终端，不改全局） |
+| `ccc switch [name]` | 全局切换，写入 `settings.json` |
 | `ccc current` | 显示当前活跃的服务商 |
-| `ccc show <name>` | 查看服务商配置详情（token 自动脱敏） |
+| `ccc show [name]` | 查看服务商配置详情（token 自动脱敏） |
+| `ccc tui` | 启动交互式 TUI 菜单（需要 `gum`） |
+
+安装 `gum` 后，省略 `[name]` 参数时会弹出模糊搜索选择器。
 
 ### 仅独立模式可用
 
 | 命令 | 说明 |
 |------|------|
-| `ccc add <name>` | 交互式创建新 profile |
-| `ccc edit <name>` | 用 `$EDITOR` 编辑 profile |
-| `ccc rm <name>` | 删除 profile |
+| `ccc add [name]` | 交互式创建新 profile |
+| `ccc edit [name]` | 用 `$EDITOR` 编辑 profile |
+| `ccc rm [name]` | 删除 profile |
 | `ccc import [name]` | 将当前 `settings.json` 导入为 profile |
 
 ### 选项
@@ -115,6 +132,18 @@ ccc switch CPA
 | `--cc-switch` | 强制使用 CC-Switch 模式 |
 | `-h, --help` | 显示帮助 |
 | `-v, --version` | 显示版本 |
+
+## 交互式 TUI
+
+安装 [gum](https://github.com/charmbracelet/gum) 后，`ccc` 提供可视化交互体验：
+
+- `ccc`（无参数）— 启动完整 TUI 菜单，带样式化标题和操作选择器
+- `ccc add` — 样式化表单输入，token 密码遮蔽，JSON 预览和确认
+- `ccc use` / `ccc switch` / `ccc show` / `ccc edit` / `ccc rm` — 省略名称时弹出模糊搜索选择器
+- `ccc list` — 带边框的表格输出
+- `ccc rm` — 样式化确认对话框
+
+未安装 `gum` 时，所有功能自动回退为纯文本模式。
 
 ## 会话级服务商隔离
 
@@ -236,6 +265,7 @@ ccmux 也可以完全独立使用，无需安装 CC-Switch。
 
 - `bash` 3.2+（macOS 默认版本）或 `zsh`
 - `jq` — JSON 处理工具
+- `gum` — 可选，用于交互式 TUI（[安装方式](https://github.com/charmbracelet/gum#installation)）
 - `sqlite3` — 仅 CC-Switch 模式需要（macOS/Linux 自带）
 - Claude Code CLI（`claude`）
 

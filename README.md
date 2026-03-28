@@ -31,6 +31,7 @@ ccmux (command: `ccc`) fixes both:
 
 - Per-session provider isolation via Claude Code's native `--settings` overlay
 - Global provider switching with automatic backup
+- Interactive TUI with visual menus, fuzzy search, and styled forms (powered by [gum](https://github.com/charmbracelet/gum))
 - Fuzzy name matching (case-insensitive prefix)
 - Auto-integration with [CC-Switch](https://github.com/farion1231/cc-switch) GUI, or fully standalone
 - Zero config to start — `ccc import` snapshots your current setup
@@ -51,6 +52,18 @@ ln -sf /path/to/ccmux/ccc ~/.local/bin/ccc
 ```
 
 Requires `jq` (`brew install jq` / `apt install jq`).
+
+Optional: install [gum](https://github.com/charmbracelet/gum) for the interactive TUI experience:
+
+```bash
+# macOS
+brew install gum
+
+# Go
+go install github.com/charmbracelet/gum@latest
+```
+
+When `gum` is installed, `ccc` (no args) launches an interactive TUI menu. Without `gum`, all commands fall back to plain text — no functionality is lost.
 
 ## Quick Start
 
@@ -92,19 +105,23 @@ ccc switch CPA
 
 | Command | Description |
 |---------|-------------|
-| `ccc` / `ccc list` | List all providers, `→` marks the active one |
-| `ccc use <name> [-- args]` | Launch Claude Code with a provider (session-scoped, no global change) |
-| `ccc switch <name>` | Switch globally — writes to `settings.json` |
+| `ccc` | Interactive TUI menu (with `gum`) or list providers (without `gum`) |
+| `ccc list` | List all providers, `→` marks the active one |
+| `ccc use [name] [-- args]` | Launch Claude Code with a provider (session-scoped, no global change) |
+| `ccc switch [name]` | Switch globally — writes to `settings.json` |
 | `ccc current` | Show the active provider |
-| `ccc show <name>` | Show provider config (tokens auto-masked) |
+| `ccc show [name]` | Show provider config (tokens auto-masked) |
+| `ccc tui` | Launch interactive TUI menu (requires `gum`) |
+
+When `gum` is available, commands that take `[name]` will show a fuzzy search picker if the name is omitted.
 
 ### Standalone mode only
 
 | Command | Description |
 |---------|-------------|
-| `ccc add <name>` | Create a new profile interactively |
-| `ccc edit <name>` | Edit a profile with `$EDITOR` |
-| `ccc rm <name>` | Remove a profile |
+| `ccc add [name]` | Create a new profile interactively |
+| `ccc edit [name]` | Edit a profile with `$EDITOR` |
+| `ccc rm [name]` | Remove a profile |
 | `ccc import [name]` | Import current `settings.json` as a profile |
 
 ### Options
@@ -115,6 +132,18 @@ ccc switch CPA
 | `--cc-switch` | Force CC-Switch mode |
 | `-h, --help` | Show help |
 | `-v, --version` | Show version |
+
+## Interactive TUI
+
+When [gum](https://github.com/charmbracelet/gum) is installed, `ccc` provides a visual interactive experience:
+
+- `ccc` (no args) — launches a full TUI menu with styled header and action picker
+- `ccc add` — styled form inputs with password masking, JSON preview, and confirmation
+- `ccc use` / `ccc switch` / `ccc show` / `ccc edit` / `ccc rm` — fuzzy search provider picker when name is omitted
+- `ccc list` — bordered table output
+- `ccc rm` — styled confirmation dialog
+
+All features gracefully fall back to plain text when `gum` is not available.
 
 ## Per-Session Provider Isolation
 
@@ -236,6 +265,7 @@ ccmux also works completely standalone without CC-Switch installed.
 
 - `bash` 3.2+ (macOS default) or `zsh`
 - `jq` — JSON processing
+- `gum` — optional, for interactive TUI ([install](https://github.com/charmbracelet/gum#installation))
 - `sqlite3` — only in CC-Switch mode (pre-installed on macOS/Linux)
 - Claude Code CLI (`claude`)
 
