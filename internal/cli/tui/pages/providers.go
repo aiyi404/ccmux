@@ -61,10 +61,12 @@ func NewProviders(state *store.AppState) ProvidersModel {
 	actionMap = append(actionMap, ProviderActionBack)
 
 	return ProvidersModel{
-		state:     state,
-		table:     components.NewProviderTable(providers, currentName, 80),
-		actions:   actions,
-		actionMap: actionMap,
+		state:      state,
+		table:      components.NewProviderTable(providers, currentName, 80),
+		actions:    actions,
+		actionMap:  actionMap,
+		actionMenu: true,
+		actionIdx:  0,
 	}
 }
 
