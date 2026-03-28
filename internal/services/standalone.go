@@ -32,8 +32,35 @@ func NewStandaloneService(cfg *config.AppConfig, configPath, profilesDir string)
 }
 
 // ProfilePath returns the absolute path to a profile JSON file.
+// It first searches for an existing file whose JSON "name" field matches,
+// then falls back to name+".json" for new profiles.
 func (s *StandaloneService) ProfilePath(name string) string {
+	if path, ok := s.findProfilePath(name); ok {
+		return path
+	}
 	return filepath.Join(s.profilesDir, name+".json")
+}
+
+// findProfilePath scans the profiles directory for a file whose JSON "name" matches.
+func (s *StandaloneService) findProfilePath(name string) (string, bool) {
+	entries, err := os.ReadDir(s.profilesDir)
+	if err != nil {
+		return "", false
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		path := filepath.Join(s.profilesDir, e.Name())
+		pf, err := s.loadProfile(path)
+		if err != nil {
+			continue
+		}
+		if pf.Name == name {
+			return path, true
+		}
+	}
+	return "", false
 }
 
 func (s *StandaloneService) loadProfile(path string) (*profileFile, error) {
