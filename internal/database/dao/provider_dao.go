@@ -6,7 +6,7 @@ import (
 )
 
 type ProviderRow struct {
-	ID             int
+	ID             string
 	Name           string
 	SettingsConfig string
 	IsCurrent      bool
@@ -33,11 +33,15 @@ func (d *ProviderDAO) ListAll() ([]ProviderRow, error) {
 	var result []ProviderRow
 	for rows.Next() {
 		var r ProviderRow
-		var isCurrent int
-		if err := rows.Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &r.SortIndex); err != nil {
+		var isCurrent sql.NullInt64
+		var sortIndex sql.NullInt64
+		if err := rows.Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &sortIndex); err != nil {
 			return nil, err
 		}
-		r.IsCurrent = isCurrent == 1
+		r.IsCurrent = isCurrent.Valid && isCurrent.Int64 == 1
+		if sortIndex.Valid {
+			r.SortIndex = int(sortIndex.Int64)
+		}
 		result = append(result, r)
 	}
 	return result, rows.Err()
@@ -45,11 +49,12 @@ func (d *ProviderDAO) ListAll() ([]ProviderRow, error) {
 
 func (d *ProviderDAO) GetCurrent() (*ProviderRow, error) {
 	var r ProviderRow
-	var isCurrent int
+	var isCurrent sql.NullInt64
+	var sortIndex sql.NullInt64
 	err := d.db.QueryRow(
 		`SELECT id, name, settings_config, is_current, sort_index
 		 FROM providers WHERE app_type=? AND is_current=1 LIMIT 1`, d.appType).
-		Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &r.SortIndex)
+		Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &sortIndex)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -57,23 +62,30 @@ func (d *ProviderDAO) GetCurrent() (*ProviderRow, error) {
 		return nil, err
 	}
 	r.IsCurrent = true
+	if sortIndex.Valid {
+		r.SortIndex = int(sortIndex.Int64)
+	}
 	return &r, nil
 }
 
 func (d *ProviderDAO) GetByName(name string) (*ProviderRow, error) {
 	var r ProviderRow
-	var isCurrent int
+	var isCurrent sql.NullInt64
+	var sortIndex sql.NullInt64
 	err := d.db.QueryRow(
 		`SELECT id, name, settings_config, is_current, sort_index
 		 FROM providers WHERE app_type=? AND name=? LIMIT 1`, d.appType, name).
-		Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &r.SortIndex)
+		Scan(&r.ID, &r.Name, &r.SettingsConfig, &isCurrent, &sortIndex)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	r.IsCurrent = isCurrent == 1
+	r.IsCurrent = isCurrent.Valid && isCurrent.Int64 == 1
+	if sortIndex.Valid {
+		r.SortIndex = int(sortIndex.Int64)
+	}
 	return &r, nil
 }
 
