@@ -1,0 +1,166 @@
+package pages
+
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/farion1231/ccmux/internal/cli/i18n"
+	"github.com/farion1231/ccmux/internal/cli/tui/styles"
+	"github.com/farion1231/ccmux/internal/config"
+	"github.com/farion1231/ccmux/internal/store"
+)
+
+type SettingsModel struct {
+	state       *store.AppState
+	choices     []string
+	cursor      int
+	modeMenu    bool
+	modeChoices []string
+	modeCursor  int
+	langMenu    bool
+	langChoices []string
+	langCursor  int
+}
+
+type EditConfigMsg struct{}
+
+func langDisplay(lang string) string {
+	if lang == "zh" {
+		return "中文"
+	}
+	return "English"
+}
+
+func NewSettings(state *store.AppState) SettingsModel {
+	return SettingsModel{
+		state: state,
+		choices: []string{
+			fmt.Sprintf("%s (current: %s)", i18n.T("switch_mode"), state.Mode),
+			fmt.Sprintf("%s (%s)", i18n.T("switch_lang"), langDisplay(state.Lang)),
+			i18n.T("open_config"),
+			i18n.T("back"),
+		},
+		modeChoices: []string{"auto", "standalone", "ccswitch"},
+		langChoices: []string{"English", "中文"},
+	}
+}
+
+func (m SettingsModel) Init() tea.Cmd { return nil }
+
+func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if m.modeMenu {
+			switch msg.String() {
+			case "up", "k":
+				if m.modeCursor > 0 {
+					m.modeCursor--
+				}
+			case "down", "j":
+				if m.modeCursor < len(m.modeChoices)-1 {
+					m.modeCursor++
+				}
+			case "enter":
+				newMode := m.modeChoices[m.modeCursor]
+				m.state.Config.Mode = newMode
+				config.SaveConfig(m.state.Config)
+				m.modeMenu = false
+				m.choices[0] = fmt.Sprintf("%s (current: %s)", i18n.T("switch_mode"), newMode)
+			case "esc":
+				m.modeMenu = false
+			}
+			return m, nil
+		}
+		if m.langMenu {
+			switch msg.String() {
+			case "up", "k":
+				if m.langCursor > 0 {
+					m.langCursor--
+				}
+			case "down", "j":
+				if m.langCursor < len(m.langChoices)-1 {
+					m.langCursor++
+				}
+			case "enter":
+				newLang := "en"
+				if m.langCursor == 1 {
+					newLang = "zh"
+				}
+				m.state.Config.Lang = newLang
+				m.state.Lang = newLang
+				i18n.SetLang(newLang)
+				config.SaveConfig(m.state.Config)
+				m.langMenu = false
+				m.choices[1] = fmt.Sprintf("%s (%s)", i18n.T("switch_lang"), langDisplay(newLang))
+			case "esc":
+				m.langMenu = false
+			}
+			return m, nil
+		}
+		switch msg.String() {
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down", "j":
+			if m.cursor < len(m.choices)-1 {
+				m.cursor++
+			}
+// PLACEHOLDER_SETTINGS_UPDATE_CONT
+		case "enter":
+			switch m.cursor {
+			case 0:
+				m.modeMenu = true
+				m.modeCursor = 0
+			case 1:
+				m.langMenu = true
+				m.langCursor = 0
+			case 2:
+				return m, func() tea.Msg { return EditConfigMsg{} }
+			case 3:
+				return m, func() tea.Msg { return GoBackMsg{} }
+			}
+		case "esc", "q":
+			return m, func() tea.Msg { return GoBackMsg{} }
+		}
+	}
+	return m, nil
+}
+
+func (m SettingsModel) View() string {
+	s := styles.TitleStyle.Render("  "+i18n.T("settings")) + "\n\n"
+	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("mode_label"), m.state.Mode)
+	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("config_path"), config.CCCConfig)
+	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("profiles_dir"), config.CCCProfiles)
+	s += fmt.Sprintf("  %-14s :  %s\n\n", i18n.T("lang_label"), langDisplay(m.state.Lang))
+	if m.modeMenu {
+		s += styles.Bold.Render(i18n.T("select_mode")) + "\n"
+		for i, c := range m.modeChoices {
+			if i == m.modeCursor {
+				s += styles.MenuSelectedStyle.Render("▸ "+c) + "\n"
+			} else {
+				s += styles.MenuItemStyle.Render("  "+c) + "\n"
+			}
+		}
+		return s
+	}
+	if m.langMenu {
+		s += styles.Bold.Render(i18n.T("select_lang")) + "\n"
+		for i, c := range m.langChoices {
+			if i == m.langCursor {
+				s += styles.MenuSelectedStyle.Render("▸ "+c) + "\n"
+			} else {
+				s += styles.MenuItemStyle.Render("  "+c) + "\n"
+			}
+		}
+		return s
+	}
+	for i, choice := range m.choices {
+		if i == m.cursor {
+			s += styles.MenuSelectedStyle.Render("▸ "+choice) + "\n"
+		} else {
+			s += styles.MenuItemStyle.Render("  "+choice) + "\n"
+		}
+	}
+	return s
+}
