@@ -122,7 +122,7 @@ func (m ProvidersModel) Update(msg tea.Msg) (ProvidersModel, tea.Cmd) {
 }
 
 func (m ProvidersModel) View() string {
-	s := styles.TitleStyle.Render("  "+i18n.T("providers")) + "\n\n"
+	s := styles.TitleStyle.Render(i18n.T("providers")) + "\n\n"
 	s += m.table.View() + "\n\n"
 	if m.info != "" {
 		s += m.info + "\n\n" + styles.Dim.Render(i18n.T("press_enter"))

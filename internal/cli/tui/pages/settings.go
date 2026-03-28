@@ -128,11 +128,11 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 }
 
 func (m SettingsModel) View() string {
-	s := styles.TitleStyle.Render("  "+i18n.T("settings")) + "\n\n"
-	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("mode_label"), m.state.Mode)
-	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("config_path"), config.CCCConfig)
-	s += fmt.Sprintf("  %-14s :  %s\n", i18n.T("profiles_dir"), config.CCCProfiles)
-	s += fmt.Sprintf("  %-14s :  %s\n\n", i18n.T("lang_label"), langDisplay(m.state.Lang))
+	s := styles.TitleStyle.Render("⚙ "+i18n.T("settings")) + "\n\n"
+	s += styles.LabelStyle.Render(i18n.T("mode_label")) + styles.ValueStyle.Render(m.state.Mode) + "\n"
+	s += styles.LabelStyle.Render(i18n.T("config_path")) + styles.ValueStyle.Render(config.CCCConfig) + "\n"
+	s += styles.LabelStyle.Render(i18n.T("profiles_dir")) + styles.ValueStyle.Render(config.CCCProfiles) + "\n"
+	s += styles.LabelStyle.Render(i18n.T("lang_label")) + styles.ValueStyle.Render(langDisplay(m.state.Lang)) + "\n\n"
 	if m.modeMenu {
 		s += styles.Bold.Render(i18n.T("select_mode")) + "\n"
 		for i, c := range m.modeChoices {

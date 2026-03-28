@@ -42,11 +42,14 @@ func NewProviderTable(providers []services.Provider, currentName string, width i
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(styles.Gray).
+		BorderForeground(styles.Comment).
 		BorderBottom(true).
 		Bold(true).
-		Foreground(styles.Lavender)
-	s.Selected = s.Selected.Foreground(styles.Pink).Bold(true)
+		Foreground(styles.Purple)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("#282a36")).
+		Background(styles.Cyan).
+		Bold(true)
 	t.SetStyles(s)
 	return ProviderTable{table: t}
 }
