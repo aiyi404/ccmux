@@ -49,3 +49,38 @@ func RunUse(state *store.AppState, name string, extraArgs []string) error {
 	fmt.Printf("▸ launching claude with profile '%s'\n", providerName)
 	return syscall.Exec(claudePath, args, os.Environ())
 }
+
+// BuildExecResult builds an ExecResult for use by the TUI (post-exit syscall.Exec).
+func BuildExecResult(state *store.AppState, name string, extraArgs []string) (*ExecResult, error) {
+	overlay, err := state.Service.BuildOverlay(name)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpfile, err := os.CreateTemp("", "ccc-*.json")
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := json.MarshalIndent(overlay, "", "  ")
+	if err != nil {
+		os.Remove(tmpfile.Name())
+		return nil, err
+	}
+	if _, err := tmpfile.Write(data); err != nil {
+		os.Remove(tmpfile.Name())
+		return nil, err
+	}
+	tmpfile.Close()
+
+	claudePath, err := exec.LookPath("claude")
+	if err != nil {
+		os.Remove(tmpfile.Name())
+		return nil, fmt.Errorf("claude not found in PATH: %w", err)
+	}
+
+	args := []string{"claude", "--settings", tmpfile.Name()}
+	args = append(args, extraArgs...)
+
+	return &ExecResult{Binary: claudePath, Args: args}, nil
+}
