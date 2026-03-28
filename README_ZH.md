@@ -37,7 +37,13 @@ ccmux（命令：`ccc`）解决这两个问题：
 ## 安装
 
 ```bash
-# 克隆并安装（需要 Go 1.22+）
+# 一键安装（自动检测系统和架构，下载预编译二进制）
+curl -fsSL https://raw.githubusercontent.com/aiyi404/ccmux/main/install.sh | bash
+```
+
+或克隆源码构建：
+
+```bash
 git clone https://github.com/aiyi404/ccmux.git
 cd ccmux && ./install.sh
 ```

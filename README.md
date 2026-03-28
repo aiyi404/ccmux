@@ -37,7 +37,13 @@ ccmux (`ccc`) fixes both:
 ## Install
 
 ```bash
-# Clone and install (requires Go 1.22+)
+# One-liner (auto-detects OS/arch, downloads pre-built binary)
+curl -fsSL https://raw.githubusercontent.com/aiyi404/ccmux/main/install.sh | bash
+```
+
+Or clone and build from source:
+
+```bash
 git clone https://github.com/aiyi404/ccmux.git
 cd ccmux && ./install.sh
 ```
