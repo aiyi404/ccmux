@@ -12,9 +12,11 @@ import (
 	"github.com/farion1231/ccmux/internal/cli/commands"
 	"github.com/farion1231/ccmux/internal/cli/i18n"
 	"github.com/farion1231/ccmux/internal/cli/tui/animations"
+	"github.com/farion1231/ccmux/internal/cli/tui/components"
 	"github.com/farion1231/ccmux/internal/cli/tui/pages"
 	"github.com/farion1231/ccmux/internal/cli/tui/styles"
 	"github.com/farion1231/ccmux/internal/config"
+	"github.com/farion1231/ccmux/internal/services"
 	"github.com/farion1231/ccmux/internal/store"
 	"github.com/mattn/go-runewidth"
 )
@@ -26,6 +28,7 @@ const (
 	PageHome
 	PageProviders
 	PageSettings
+	PageAddProvider
 )
 
 const sidebarWidth = 20
@@ -52,6 +55,7 @@ type Model struct {
 	settings  pages.SettingsModel
 
 	showImportPrompt bool
+	addForm          *components.FormModel
 
 	execSignal *ExecSignal
 	quitting   bool
@@ -219,6 +223,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	case PageAddProvider:
+		if m.addForm != nil {
+			if msg, ok := msg.(tea.KeyMsg); ok && msg.String() == "esc" {
+				m.addForm = nil
+				m.page = PageProviders
+				m.focusSidebar = false
+				return m, nil
+			}
+			f, cmd := m.addForm.Update(msg)
+			m.addForm = &f
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 	}
 	// Handle page messages
 	switch msg := msg.(type) {
@@ -277,6 +295,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, fb.Init())
 			}
 			m.providers.Refresh()
+		case pages.ProviderActionAdd:
+			form := components.NewForm([]components.FormField{
+				{Label: "Name", Placeholder: "my-proxy", Required: true},
+				{Label: "ANTHROPIC_BASE_URL", Placeholder: "https://api.example.com", Required: true},
+				{Label: "ANTHROPIC_AUTH_TOKEN", Placeholder: "sk-xxx", Required: true, Password: true},
+				{Label: "ANTHROPIC_MODEL", Placeholder: "claude-sonnet-4-6", Required: true},
+				{Label: "Model Alias", Placeholder: "e.g. opus[1m]"},
+			})
+			m.addForm = &form
+			m.page = PageAddProvider
+			m.focusSidebar = false
+			return m, form.Init()
 		case pages.ProviderActionImport:
 			err := m.state.Service.Import("")
 			if err != nil {
@@ -289,6 +319,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, fb.Init())
 			}
 			m.providers.Refresh()
+		}
+
+	case components.FormSubmitMsg:
+		if m.page == PageAddProvider && m.addForm != nil {
+			name := msg.Values["Name"]
+			baseURL := msg.Values["ANTHROPIC_BASE_URL"]
+			token := msg.Values["ANTHROPIC_AUTH_TOKEN"]
+			model := msg.Values["ANTHROPIC_MODEL"]
+			alias := msg.Values["Model Alias"]
+
+			if name == "" || baseURL == "" || token == "" || model == "" {
+				fb := animations.NewFeedback("required fields missing", animations.FeedbackError)
+				m.feedback = &fb
+				cmds = append(cmds, fb.Init())
+			} else {
+				p := services.Provider{
+					Name: name,
+					Env: map[string]string{
+						"ANTHROPIC_BASE_URL":   baseURL,
+						"ANTHROPIC_AUTH_TOKEN":  token,
+						"ANTHROPIC_MODEL":      model,
+					},
+					ModelAlias: alias,
+				}
+				if err := m.state.Service.Add(p); err != nil {
+					fb := animations.NewFeedback(err.Error(), animations.FeedbackError)
+					m.feedback = &fb
+					cmds = append(cmds, fb.Init())
+				} else {
+					fb := animations.NewFeedback("profile '"+name+"' created", animations.FeedbackSuccess)
+					m.feedback = &fb
+					cmds = append(cmds, fb.Init())
+					m.providers.Refresh()
+				}
+			}
+			m.addForm = nil
+			m.page = PageProviders
+			m.focusSidebar = false
 		}
 
 	case pages.GoBackMsg:
@@ -430,6 +498,10 @@ func (m Model) renderContent(width, height int) string {
 			content = m.providers.View()
 		case PageSettings:
 			content = m.settings.View()
+		case PageAddProvider:
+			if m.addForm != nil {
+				content = styles.TitleStyle.Render(i18n.T("add_provider")) + "\n\n" + m.addForm.View() + "\n" + styles.Dim.Render("Tab/↑↓: navigate  Enter: next/submit  Esc: cancel")
+			}
 		}
 	}
 
