@@ -100,7 +100,7 @@ var (
 	WarnStyle    = lipgloss.NewStyle().Foreground(Yellow)
 
 	// Labels and values
-	LabelStyle = lipgloss.NewStyle().Foreground(Comment).Width(16)
+	LabelStyle = lipgloss.NewStyle().Foreground(Comment).Width(18)
 	ValueStyle = lipgloss.NewStyle().Foreground(Cyan)
 
 	// Table

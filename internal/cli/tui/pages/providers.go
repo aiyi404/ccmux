@@ -77,6 +77,30 @@ func (m ProvidersModel) Update(msg tea.Msg) (ProvidersModel, tea.Cmd) {
 			m.info = ""
 			return m, nil
 		}
+
+		// When no providers, always show action menu
+		if !m.hasProviders() && m.state.Mode == "standalone" {
+			switch msg.String() {
+			case "up", "k":
+				if m.actionIdx > 0 {
+					m.actionIdx--
+				}
+			case "down", "j":
+				if m.actionIdx < len(m.actions)-1 {
+					m.actionIdx++
+				}
+			case "enter":
+				action := m.actionMap[m.actionIdx]
+				if action == ProviderActionBack {
+					return m, func() tea.Msg { return GoBackMsg{} }
+				}
+				return m, func() tea.Msg { return ProviderActionMsg{Action: action, Name: ""} }
+			case "esc", "q":
+				return m, func() tea.Msg { return GoBackMsg{} }
+			}
+			return m, nil
+		}
+
 		if m.actionMenu {
 			switch msg.String() {
 			case "up", "k":
@@ -121,8 +145,29 @@ func (m ProvidersModel) Update(msg tea.Msg) (ProvidersModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m ProvidersModel) hasProviders() bool {
+	providers, _ := m.state.Service.List()
+	return len(providers) > 0
+}
+
 func (m ProvidersModel) View() string {
 	s := styles.TitleStyle.Render(i18n.T("providers")) + "\n\n"
+
+	if !m.hasProviders() {
+		// Empty list — show add/import actions directly
+		s += styles.Dim.Render(i18n.T("err_no_providers")) + "\n\n"
+		if m.state.Mode == "standalone" {
+			for i, a := range m.actions {
+				if i == m.actionIdx {
+					s += styles.MenuSelectedStyle.Render("▸ "+a) + "\n"
+				} else {
+					s += styles.MenuItemStyle.Render("  "+a) + "\n"
+				}
+			}
+		}
+		return s
+	}
+
 	s += m.table.View() + "\n\n"
 	if m.info != "" {
 		s += m.info + "\n\n" + styles.Dim.Render(i18n.T("press_enter"))
