@@ -15,6 +15,7 @@ import (
 	"github.com/farion1231/ccmux/internal/cli/tui/styles"
 	"github.com/farion1231/ccmux/internal/config"
 	"github.com/farion1231/ccmux/internal/store"
+	"github.com/mattn/go-runewidth"
 )
 
 type Page int
@@ -390,6 +391,14 @@ func (m Model) renderContent(width, height int) string {
 	return contentStyle.Width(width).Height(height - 2).Render(content)
 }
 
+func padLabel(label string, width int) string {
+	w := runewidth.StringWidth(label)
+	if w >= width {
+		return label
+	}
+	return label + strings.Repeat(" ", width-w)
+}
+
 func (m Model) renderHome() string {
 	s := styles.TitleStyle.Render("Home") + "\n\n"
 
@@ -399,19 +408,19 @@ func (m Model) renderHome() string {
 		return s
 	}
 
-	s += styles.LabelStyle.Render("Provider") + styles.ValueStyle.Render(p.Name) + "\n"
-	s += styles.LabelStyle.Render("Base URL") + styles.ValueStyle.Render(p.Env["ANTHROPIC_BASE_URL"]) + "\n"
-	s += styles.LabelStyle.Render("Model") + styles.ValueStyle.Render(p.Env["ANTHROPIC_MODEL"]) + "\n"
+	const lw = 16
+	s += styles.Dim.Render(padLabel("Provider", lw)) + styles.ValueStyle.Render(p.Name) + "\n"
+	s += styles.Dim.Render(padLabel("Base URL", lw)) + styles.ValueStyle.Render(p.Env["ANTHROPIC_BASE_URL"]) + "\n"
+	s += styles.Dim.Render(padLabel("Model", lw)) + styles.ValueStyle.Render(p.Env["ANTHROPIC_MODEL"]) + "\n"
 	if p.ModelAlias != "" {
-		s += styles.LabelStyle.Render("Model Alias") + styles.ValueStyle.Render(p.ModelAlias) + "\n"
+		s += styles.Dim.Render(padLabel("Model Alias", lw)) + styles.ValueStyle.Render(p.ModelAlias) + "\n"
 	}
 	s += "\n"
 
-	// Provider count
 	providers, _ := m.state.Service.List()
-	s += styles.LabelStyle.Render("Providers") + styles.ValueStyle.Render(fmt.Sprintf("%d", len(providers))) + "\n"
-	s += styles.LabelStyle.Render("Mode") + styles.ValueStyle.Render(m.state.Mode) + "\n"
-	s += styles.LabelStyle.Render("Language") + styles.ValueStyle.Render(m.state.Lang) + "\n"
+	s += styles.Dim.Render(padLabel("Providers", lw)) + styles.ValueStyle.Render(fmt.Sprintf("%d", len(providers))) + "\n"
+	s += styles.Dim.Render(padLabel("Mode", lw)) + styles.ValueStyle.Render(m.state.Mode) + "\n"
+	s += styles.Dim.Render(padLabel("Language", lw)) + styles.ValueStyle.Render(m.state.Lang) + "\n"
 
 	return s
 }

@@ -2,12 +2,14 @@ package pages
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/farion1231/ccmux/internal/cli/i18n"
 	"github.com/farion1231/ccmux/internal/cli/tui/styles"
 	"github.com/farion1231/ccmux/internal/config"
 	"github.com/farion1231/ccmux/internal/store"
+	"github.com/mattn/go-runewidth"
 )
 
 type SettingsModel struct {
@@ -127,12 +129,22 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	return m, nil
 }
 
+// padLabel pads a label to a fixed display width, accounting for CJK characters
+func padLabel(label string, width int) string {
+	w := runewidth.StringWidth(label)
+	if w >= width {
+		return label
+	}
+	return label + strings.Repeat(" ", width-w)
+}
+
 func (m SettingsModel) View() string {
 	s := styles.TitleStyle.Render("⚙ "+i18n.T("settings")) + "\n\n"
-	s += styles.LabelStyle.Render(i18n.T("mode_label")) + styles.ValueStyle.Render(m.state.Mode) + "\n"
-	s += styles.LabelStyle.Render(i18n.T("config_path")) + styles.ValueStyle.Render(config.CCCConfig) + "\n"
-	s += styles.LabelStyle.Render(i18n.T("profiles_dir")) + styles.ValueStyle.Render(config.CCCProfiles) + "\n"
-	s += styles.LabelStyle.Render(i18n.T("lang_label")) + styles.ValueStyle.Render(langDisplay(m.state.Lang)) + "\n\n"
+	const labelW = 16
+	s += styles.Dim.Render(padLabel(i18n.T("mode_label"), labelW)) + styles.ValueStyle.Render(m.state.Mode) + "\n"
+	s += styles.Dim.Render(padLabel(i18n.T("config_path"), labelW)) + styles.ValueStyle.Render(config.CCCConfig) + "\n"
+	s += styles.Dim.Render(padLabel(i18n.T("profiles_dir"), labelW)) + styles.ValueStyle.Render(config.CCCProfiles) + "\n"
+	s += styles.Dim.Render(padLabel(i18n.T("lang_label"), labelW)) + styles.ValueStyle.Render(langDisplay(m.state.Lang)) + "\n\n"
 	if m.modeMenu {
 		s += styles.Bold.Render(i18n.T("select_mode")) + "\n"
 		for i, c := range m.modeChoices {
