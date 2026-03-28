@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/farion1231/ccmux/internal/config"
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 func backupSettings() error {

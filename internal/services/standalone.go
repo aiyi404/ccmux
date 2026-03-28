@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/farion1231/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/config"
 )
 
 type profileFile struct {

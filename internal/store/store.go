@@ -3,9 +3,9 @@ package store
 import (
 	"os"
 
-	"github.com/farion1231/ccmux/internal/cli/i18n"
-	"github.com/farion1231/ccmux/internal/config"
-	"github.com/farion1231/ccmux/internal/services"
+	"github.com/aiyi404/ccmux/internal/cli/i18n"
+	"github.com/aiyi404/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/services"
 )
 
 type AppState struct {

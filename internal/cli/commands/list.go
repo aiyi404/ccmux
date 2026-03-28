@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/farion1231/ccmux/internal/cli/i18n"
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/cli/i18n"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 func RunList(state *store.AppState) error {

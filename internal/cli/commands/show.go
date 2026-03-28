@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 func maskToken(val string) string {

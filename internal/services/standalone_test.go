@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/farion1231/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/config"
 )
 
 func setupStandaloneTest(t *testing.T) (*StandaloneService, string) {

@@ -1,14 +1,15 @@
 package cmd
 
 import (
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/version"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
 	Use:     "ccc",
 	Short:   "Claude Code Provider Multiplexer",
-	Version: "0.2.0",
+	Version: version.Version,
 }
 
 func Execute() error {

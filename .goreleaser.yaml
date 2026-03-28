@@ -1,0 +1,41 @@
+project_name: ccmux
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ccc
+    binary: ccc
+    main: .
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/aiyi404/ccmux/internal/version.Version={{.Version}}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "ccc_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+
+release:
+  github:
+    owner: aiyi404
+    name: ccmux

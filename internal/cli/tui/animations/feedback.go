@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/farion1231/ccmux/internal/cli/tui/styles"
+	"github.com/aiyi404/ccmux/internal/cli/tui/styles"
 )
 
 type FeedbackType int

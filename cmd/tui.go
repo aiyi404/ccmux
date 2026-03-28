@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/farion1231/ccmux/internal/cli/tui"
+	"github.com/aiyi404/ccmux/internal/cli/tui"
 	"github.com/spf13/cobra"
 )
 

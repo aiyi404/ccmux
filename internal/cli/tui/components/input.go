@@ -3,7 +3,7 @@ package components
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/farion1231/ccmux/internal/cli/tui/styles"
+	"github.com/aiyi404/ccmux/internal/cli/tui/styles"
 )
 
 type FormField struct {

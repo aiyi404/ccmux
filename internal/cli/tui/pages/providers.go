@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/farion1231/ccmux/internal/cli/i18n"
-	"github.com/farion1231/ccmux/internal/cli/tui/components"
-	"github.com/farion1231/ccmux/internal/cli/tui/styles"
-	"github.com/farion1231/ccmux/internal/services"
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/cli/i18n"
+	"github.com/aiyi404/ccmux/internal/cli/tui/components"
+	"github.com/aiyi404/ccmux/internal/cli/tui/styles"
+	"github.com/aiyi404/ccmux/internal/services"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 type ProviderAction int

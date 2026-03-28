@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/farion1231/ccmux/internal/config"
-	"github.com/farion1231/ccmux/internal/database"
-	"github.com/farion1231/ccmux/internal/database/dao"
+	"github.com/aiyi404/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/database"
+	"github.com/aiyi404/ccmux/internal/database/dao"
 )
 
 // RunImportAll imports providers from cc-switch.db into JSON profiles.

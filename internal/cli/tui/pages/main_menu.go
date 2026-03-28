@@ -2,8 +2,8 @@ package pages
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/farion1231/ccmux/internal/cli/i18n"
-	"github.com/farion1231/ccmux/internal/cli/tui/styles"
+	"github.com/aiyi404/ccmux/internal/cli/i18n"
+	"github.com/aiyi404/ccmux/internal/cli/tui/styles"
 )
 
 type MainMenuChoice int

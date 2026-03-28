@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/farion1231/ccmux/cmd"
+	"github.com/aiyi404/ccmux/cmd"
 )
 
 func main() {

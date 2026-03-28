@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/farion1231/ccmux/internal/cli/commands"
+	"github.com/aiyi404/ccmux/internal/cli/commands"
 	"github.com/spf13/cobra"
 )
 

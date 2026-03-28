@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/farion1231/ccmux/internal/services"
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/services"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 func RunAdd(state *store.AppState, name string) error {

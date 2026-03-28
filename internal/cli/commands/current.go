@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/store"
 )
 
 func RunCurrent(state *store.AppState) error {

@@ -9,15 +9,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/farion1231/ccmux/internal/cli/commands"
-	"github.com/farion1231/ccmux/internal/cli/i18n"
-	"github.com/farion1231/ccmux/internal/cli/tui/animations"
-	"github.com/farion1231/ccmux/internal/cli/tui/components"
-	"github.com/farion1231/ccmux/internal/cli/tui/pages"
-	"github.com/farion1231/ccmux/internal/cli/tui/styles"
-	"github.com/farion1231/ccmux/internal/config"
-	"github.com/farion1231/ccmux/internal/services"
-	"github.com/farion1231/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/cli/commands"
+	"github.com/aiyi404/ccmux/internal/cli/i18n"
+	"github.com/aiyi404/ccmux/internal/cli/tui/animations"
+	"github.com/aiyi404/ccmux/internal/cli/tui/components"
+	"github.com/aiyi404/ccmux/internal/cli/tui/pages"
+	"github.com/aiyi404/ccmux/internal/cli/tui/styles"
+	"github.com/aiyi404/ccmux/internal/config"
+	"github.com/aiyi404/ccmux/internal/services"
+	"github.com/aiyi404/ccmux/internal/store"
+	"github.com/aiyi404/ccmux/internal/version"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -383,8 +384,8 @@ func (m Model) View() string {
 	// Logo page — full screen
 	if m.page == PageLogo {
 		logo := styles.LogoStyle.Render(m.logo.View())
-		version := styles.VersionStyle.Render("v0.2.0")
-		return "\n\n\n" + logo + "\n" + version
+		ver := styles.VersionStyle.Render("v" + version.Version)
+		return "\n\n\n" + logo + "\n" + ver
 	}
 
 	w := m.width
@@ -398,7 +399,7 @@ func (m Model) View() string {
 
 	// Logo banner (always visible)
 	logoText := strings.Join(animations.LogoLines, "\n")
-	logoBanner := styles.LogoStyle.Render(logoText) + "  " + styles.VersionStyle.Render("v0.2.0")
+	logoBanner := styles.LogoStyle.Render(logoText) + "  " + styles.VersionStyle.Render("v"+version.Version)
 	logoHeight := lipgloss.Height(logoBanner)
 
 	// Header
